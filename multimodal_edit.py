@@ -244,6 +244,7 @@ def test_MEND_LLaVA():
 
 def train_SERAC_LLaVA():
     hparams = SERACMultimodalTrainingHparams.from_hparams('hparams/TRAINING/SERAC/llava.yaml')
+    hparams.device = 5
     train_ds = CaptionDataset(train_json_path, config=hparams)
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
     trainer = MultimodalTrainer(
@@ -267,12 +268,12 @@ def test_SERAC_LLaVA():
 def test_FT_LLaVA():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
+    trainer = MultimodalTrainer( # LlavaLlamaForCasualLM()... 등 모델 특징 담김
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.run()
+    trainer.run() # train / eval(foward..,)
 
 def test_FT_LLaVA_mmproj():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_mmproj.yaml')
@@ -283,6 +284,17 @@ def test_FT_LLaVA_mmproj():
         val_set=eval_ds
     )
     trainer.run()
+
+# my code: LoRA
+def test_LORA_LLaVA():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_lora.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer( # LlavaLlamaForCasualLM()... 등 모델 특징 담김
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.run() # train / eval(foward..,)
 
 def test_IKE_LLaVA():
     hparams = IKEMultimodalHyperParams.from_hparams('hparams/IKE/llava.yaml')

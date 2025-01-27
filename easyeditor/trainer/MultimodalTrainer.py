@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 class MultimodalTrainer(BaseTrainer):
     def __init__(self, config, train_set: Dataset, val_set: Dataset):
-        super().__init__(config, train_set, val_set)
+        super().__init__(config, train_set, val_set) # base model 정의(llava, dataloader, collate_fn, optimizer.., )
 
         if hasattr(self.model, "edit_lrs") and not self.config.eval_only:
             self.lr_opt = self.OptimizerClass([self.model.edit_lrs], config.lr_lr)
@@ -42,18 +42,18 @@ class MultimodalTrainer(BaseTrainer):
                 self.model.loc_masks = batch["loc"]["attention_mask"]
 
     def edit_step(self, batch, training: bool):
-        self.model.train(training)
-        self.original_model.train(training)
+        self.model.train(training) # test시 pass(false)
+        self.original_model.train(training) # ''
 
         ####################################################################################################
         with torch.no_grad():
-            base_outputs = self.model(batch["loc"])
+            base_outputs = self.model(batch["loc"]) # prec["T-Loc"] # LORA: FT 모델 / # FT: FT Model
             if not isinstance(base_outputs, torch.Tensor):
-                base_logits = base_outputs.logits
+                base_logits = base_outputs.logits # llvava는 이걸 사용
             else:  
                 base_logits = base_outputs
                 
-            base_image_outputs = self.model(batch["loc_image"])
+            base_image_outputs = self.model(batch["loc_image"]) # prec["I-Loc"] 
             if not isinstance(base_image_outputs, torch.Tensor):
                 base_image_logits = base_image_outputs.logits
             else:
@@ -63,7 +63,7 @@ class MultimodalTrainer(BaseTrainer):
 
         # Do the edit
         start = time.time()
-        edited_model, model_info = self.model.edit(batch["edit_inner"], batch["cond"])
+        edited_model, model_info = self.model.edit(batch["edit_inner"], batch["cond"]) # FT ->   # #ERROR
         edit_time = time.time() - start
 
         l_total, l_edit, l_loc, l_base = 0, 0, 0, 0
@@ -268,7 +268,7 @@ class MultimodalTrainer(BaseTrainer):
         for val_step, batch in tqdm(enumerate(self.val_loader), total=steps, desc="Validation", ncols=100):
             if val_step >= steps:
                 break
-            _, _, _, _, info_dict = self.edit_step(batch, training=False)
+            _, _, _, _, info_dict = self.edit_step(batch, training=False) # Edit(for valid / test)
             averager.add(info_dict)
 
             if (

@@ -33,10 +33,23 @@ class ModelVisonArguments:
     mm_projector_type: Optional[str] = field(default='mlp2x_gelu')
     mm_vision_select_feature: Optional[str] = field(default="patch")
 
-def load_pretrained_model(model_path, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", **kwargs) -> LlavaLlamaForCausalLM:
+def load_pretrained_model(
+    model_path,
+    load_8bit=False,
+    load_4bit=False,
+    device_map="auto",
+    device="cuda",
+    use_lora=False,
+    lora_rank=8,
+    lora_alpha=32,
+    lora_dropout=0.1,
+    lora_target_modules=["down_proj", "up_proj"],
+    **kwargs
+) -> LlavaLlamaForCausalLM:
+    
     kwargs = {"device_map": device_map, **kwargs}
 
-    if device != "cuda":
+    if device != "cuda": # 여기 
         kwargs['device_map'] = {"": device}
 
     if load_8bit:
@@ -49,12 +62,34 @@ def load_pretrained_model(model_path, load_8bit=False, load_4bit=False, device_m
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type='nf4'
         )
-    else:
+    else: # 여기 
         kwargs['torch_dtype'] = torch.float16
 
-    # Load LLaVA model
+    # !!!!!!!!!!! Load LLaVA model(기본) !!!!!!!!!!!!!!!
+    ### 1) LoRA 관련 키 제거
+    #for key in ["lora_r", "lora_alpha", "lora_dropout", "lora_target_modules", "use_lora"]:
+    for key in ["lora_r", "lora_alpha", "lora_dropout", "lora_target_modules", "use_lora", "inner_params"]:
+        if key in kwargs:
+            print(kwargs.pop(key))
+
+    ### 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
-    # initialize vision modeles
+    
+    # !!LoRA 적용
+    if use_lora:
+        
+        from peft import get_peft_model, LoraConfig, TaskType
+        lora_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            r=lora_rank,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            target_modules=lora_target_modules
+        )
+        model = get_peft_model(model, lora_config)
+        print("-> L O R A 장 착 완 료")
+
+    # initialize vision modeles(or Load ViT?)
     model_args = ModelVisonArguments()
     model.get_model().initialize_vision_modules(model_args)
     return model

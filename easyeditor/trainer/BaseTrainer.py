@@ -32,42 +32,46 @@ class BaseTrainer:
     def __init__(self, config, train_set: Dataset, val_set: Dataset):
         LOG.info(f'Config: {config}')
         model_ = get_model(config)
-        self.alg_module = ALG_TRAIN_DICT[config.alg.upper()]
+        self.alg_module = ALG_TRAIN_DICT[config.alg.upper()] # class:easyeditor.trainer.algs.FT.FT
         LOG.info(f"Loading class {config.alg.upper()} from module {self.alg_module}")
-        self.model = self.alg_module(model_, config, lambda: copy.deepcopy(model_))
+        self.model = self.alg_module(model_, config, lambda: copy.deepcopy(model_)) # FT 
 
         self.config = config
-
+        # train?
         if config.train_base:
             self.original_model = self.model.model_constructor()
             self.original_model.load_state_dict(self.model.model.state_dict())
             self.original_model.to(self.config.device)
         else:
-            self.original_model = self.model.model
-
+            self.original_model = self.model.model # FT -> LlavaLlamaCasualLM로 풀어줌 
+            if config.use_lora:
+                self.original_model = self.original_model.model # or self.original_model.base_model
+                # self.model = ~~(peft -> Llava..로 벗겨야될지)
+        # model_parallel
         if self.config.model_parallel:
             self.config.device = self.model.model.device
         if not self.config.model_parallel and hasattr(self.config, 'device'):
             self.model.to(self.config.device)
-
+        # dataset 
         self.train_set = train_set
         self.val_set = val_set
-
+        # collate_fn
         if 'minigpt4' in self.config.model_name.lower() or 'blip2' in self.config.model_name.lower() or 'llava' in self.config.model_name.lower() or 'qwen-vl' in self.config.model_name.lower() or "owl-2" in self.config.model_name.lower():
             collate_fn = train_set.collate_fn
         else:
             raise NotImplementedError(f'Model {self.config.model_class} not supported yet.')
 
+        # DataLoader 
         self.train_loader = DataLoader(train_set, batch_size=self.config.batch_size,
                                        shuffle=True, collate_fn=collate_fn)
         self.val_loader = DataLoader(val_set, batch_size=self.config.val_batch_size,
                                        shuffle=False, collate_fn=collate_fn)
 
-        if self.config.eval_only:
+        if self.config.eval_only: # only Test 
             # Eval once and quit
             self.config.max_iters = 0
 
-        if not self.config.eval_only:
+        if not self.config.eval_only: # Train? -> optimizer (with lr)
             self.OptimizerClass = getattr(torch.optim, config.opt)
             LOG.info(f"Building optimizer {self.OptimizerClass} with lr {config.lr}")
             self.opt = self.OptimizerClass(self.model.outer_parameters(), lr=config.lr)
@@ -89,12 +93,12 @@ class BaseTrainer:
         # # outfiles
         # with open(os.getcwd() + "/config.json", "w") as f:
         #     json.dump(OmegaConf.to_container(config), f)
-
-        model_dir = os.path.join(config.results_dir, "models", config.alg)
+        # out file
+        model_dir = os.path.join(config.results_dir, "models", config.alg) # /results/model/ft
         if not (self.config.debug and not self.config.save) and not os.path.exists(model_dir):
             os.makedirs(model_dir)
         safe_model_name = self.config.model_name.split("/")[-1]  # Make sure no slashes
-        self.save_path = f"{model_dir}/{safe_model_name}"
+        self.save_path = f"{model_dir}/{safe_model_name}" # /results/model/ft/llava
 
         self.start_time = formatted_timestamp()
 
@@ -194,7 +198,7 @@ class BaseTrainer:
                 self.model.to("cpu")
                 self.model.load_state_dict(archive["model"])
                 self.model.to(self.config.device)
-
+        # eval step
         val_steps = self.config.val_steps if self.config.debug else None
         val_info = self.validate(log=True, steps=val_steps)
         self.echo(self.global_iter, val_info, pretty=True)

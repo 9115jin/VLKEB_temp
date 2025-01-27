@@ -46,7 +46,12 @@ class FT(EditableModel):
 
     def forward(self, *inputs, **kwargs):
         if 'minigpt4' in self.config.model_name.lower() or 'blip' in self.config.model_name.lower() or 'llava' in self.config.model_name.lower():
-            outputs = self.model(*inputs, **kwargs)
+            if self.config.use_lora: # LoRA의 경우, PeftModelForCasualLM -> LLavaLlamaCasualLM으로 래핑을 벗겨내야됨
+                outputs = self.model.base_model(*inputs, **kwargs)
+                #internal_model = self.model.base_model.model  # LLaVA 모델
+                #outputs = internal_model(*inputs, **kwargs) # LorA: PeftModelForCasualLM
+            else:
+                outputs = self.model(*inputs, **kwargs) # FT 
         elif "qwen-vl" in self.config.model_name.lower():
             outputs = _logits(self.model(inputs[0]['inputs'].to(self.model.device), **kwargs))
         elif "owl2" in self.model.config.name_or_path.lower():
@@ -65,9 +70,17 @@ class FT(EditableModel):
     def edit(self, batch, condition=None, detach_history=False, return_factors=False):
         if self.save_weight is not None:
             self.model.load_state_dict(self.save_weight, strict=False)
-        self.model.train()
-        if self.config.inner_params[0] in ['Qformer', 'mm_projector', 'vision_model']:
 
+        self.model.train()
+
+        # LoRA 또는 inner_params 처리
+        if not self.config.inner_params:  # inner_params가 비어 있는 경우
+            weights = {
+                n: p
+                for n, p in self.model.named_parameters()
+                if "lora" in n  # LoRA 파라미터만 선택
+            }
+        elif self.config.inner_params[0] in ['Qformer', 'mm_projector', 'vision_model']:
             weights = {
                 n: p
                 for n, p in self.model.named_parameters()
@@ -86,8 +99,15 @@ class FT(EditableModel):
             }
         
         # Save old weights for future restoration
-        self.save_weight = {k: v.detach().clone() for k, v in weights.items()}
+        self.save_weight = {k: v.detach().clone() for k, v in weights.items()} # 학습가능 파라미터
         ########
+
+        # ### Debug: Lora 있는지?, 학습가능한건? ###
+        # print("==== Model Parameter Names ====")
+        # for name, param in self.model.named_parameters():
+        #     print(name)
+
+        ### ### 
 
         opt = torch.optim.AdamW(
             [v for _, v in weights.items()],
@@ -100,8 +120,10 @@ class FT(EditableModel):
             pbar = trange(self.config.num_steps, ncols=120)
             for it in pbar:
                 opt.zero_grad()
-
-                outputs = self.model(batch)
+                if self.config.use_lora:
+                    outputs = self.model.model(batch) # PeftModelForCasualLM -> LlavaLlamaForCausalLM (LoRA: PeftModelForCasualLM) 
+                else:
+                    outputs = self.model(batch) # 입력 edit sample에 대한 출력(FT: LlavaLlamaForCausalLM)
                 if not isinstance(outputs, torch.Tensor):
                     outputs = outputs.logits
                 loss = self.edit_loss_fn(self.config, outputs, batch["labels"])["nll"]

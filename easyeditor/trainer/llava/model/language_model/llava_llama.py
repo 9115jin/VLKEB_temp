@@ -55,12 +55,12 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
     def __init__(self, config):
         super(LlamaForCausalLM, self).__init__(config)
         self.model = LlavaLlamaModel(config)
-        self.pretraining_tp = config.pretraining_tp
-        self.vocab_size = config.vocab_size
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.pretraining_tp = config.pretraining_tp # 1?
+        self.vocab_size = config.vocab_size         # 32000
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False) # 4096(hidden) -> 32000(vocab) ## 여기에 추가 모델 정의?
 
         # Initialize weights and apply final processing
-        self.post_init()
+        self.post_init() # ??
 
     def get_model(self):
         return self.model
@@ -109,7 +109,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
             _,
             inputs_embeds,
             targets
-        ) = self.prepare_inputs_from_batch(samples)
+        ) = self.prepare_inputs_from_batch(samples) # 데이터 처리..복잡하다.(textual edit하려면 꽤나 복잡할듯?)
 
         outputs = super().forward(
             input_ids=input_ids,

@@ -8,4 +8,5 @@ ALG_TRAIN_DICT = {
     'SERAC': SERAC,
     'SERAC_MULTI': SERAC_MULTI,
     'FT': FT,
+    'LORA': FT
 }

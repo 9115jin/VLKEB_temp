@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from ...util.hparams import HyperParams
 from typing import Optional, Any, List
 import yaml
@@ -90,6 +90,15 @@ class FTMultimodalHparams(HyperParams):
     qformer_checkpoint: Optional[str] = None
     freeze_qformer: bool = True
     pretrained_ckpt: Optional[str] = None  
+
+    
+    # 추가된 LoRA 관련 필드 (기본값 추가)
+    use_lora: bool = False
+    lora_r: int = 8
+    lora_alpha: int = 16
+    lora_dropout: float = 0.1
+    lora_target_modules: Optional[List[str]] = field(default_factory=list)
+
     
     @classmethod
     def from_hparams(cls, hparams_name_or_path: str):
@@ -101,7 +110,8 @@ class FTMultimodalHparams(HyperParams):
             config = yaml.safe_load(stream)
             config = super().construct_float_from_scientific_notation(config)
 
-        assert (config and config['alg'] == 'ft') or print(f'FTMultimodalHyperParams can not load from {hparams_name_or_path}, '
+        #assert (config and config['alg'] == 'ft') or print(f'FTMultimodalHyperParams can not load from {hparams_name_or_path}, '
+        assert (config and config['alg'] in ['ft','lora']) or print(f'FTMultimodalHyperParams can not load from {hparams_name_or_path}, '
                                                 f'alg_name is {config["alg"]} ')
         return cls(**config)
 

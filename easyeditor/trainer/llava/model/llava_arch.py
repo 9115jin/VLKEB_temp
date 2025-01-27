@@ -59,23 +59,23 @@ class LlavaMetaModel:
                 vision_tower = self.vision_tower[0]
             else:
                 vision_tower = self.vision_tower
-            vision_tower.load_model()
+            vision_tower.load_model() # CLIPVisionTower(=vit-L)
 
         self.config.use_mm_proj = True
-        self.config.mm_projector_type = getattr(model_args, 'mm_projector_type', 'linear')
+        self.config.mm_projector_type = getattr(model_args, 'mm_projector_type', 'linear') # connector 장착: [mlp->gelu->mlp]
         self.config.mm_hidden_size = vision_tower.hidden_size
         self.config.mm_vision_select_layer = mm_vision_select_layer
         self.config.mm_vision_select_feature = mm_vision_select_feature
 
-        if getattr(self, 'mm_projector', None) is None:
+        if getattr(self, 'mm_projector', None) is None: # mm_projector 있나 체크(connector)
             self.mm_projector = build_vision_projector(self.config)
         else:
             # In case it is frozen by LoRA
-            for p in self.mm_projector.parameters():
+            for p in self.mm_projector.parameters(): # FT-Vis의 경우, Connector를 Fine-Tuning
                 p.requires_grad = True
 
         if pretrain_mm_mlp_adapter is not None:
-            mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
+            mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu') # 기존 projector의 weight 불러옴
             def get_w(weights, keyword):
                 return {k.split(keyword + '.')[1]: v for k, v in weights.items() if keyword in k}
 

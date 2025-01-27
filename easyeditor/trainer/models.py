@@ -64,8 +64,9 @@ class BertClassifier(torch.nn.Module):
         filtered_kwargs = {k: v for k, v in kwargs.items() if k != "labels"}
         return self.classifier(self.model(*args, **filtered_kwargs)[1])
 
-
+# 모델 불러오는 코드
 def get_model(config):
+    # 파라미터 가져오기 
     if config.model_class == "BertClassifier":
         model = BertClassifier(config.model_name)
     elif config.model_name == "blip2":
@@ -104,9 +105,23 @@ def get_model(config):
 
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
-    elif config.model_name == "llava":
+    elif config.model_name == "llava": ## LLAVA 모델은 여기서! ## 
+        # 모델 로드
         from .llava.model.builder import load_pretrained_model
-        model = load_pretrained_model(model_path=config.name, device=config.device)
+        if getattr(config, 'use_lora', False): # 기존 모델 불러옴(LLAVA)
+            model = load_pretrained_model(
+                model_path=config.name,
+                device=config.device,
+                use_lora=config.use_lora,
+                lora_r=config.lora_r,
+                lora_alpha=config.lora_alpha,
+                lora_dropout=config.lora_dropout,
+                lora_target_modules=config.lora_target_modules,
+                inner_params=config.inner_params
+            )
+            
+        else: # LoRA 적용된 LLAVA
+            model = load_pretrained_model(model_path=config.name, device=config.device)
         
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
@@ -148,6 +163,8 @@ def get_model(config):
     #
     #     LOG.info("Loaded model initialization")
 
+    #
+    # After Model Loading, drop out setting
     if config.dropout is not None:
         n_reset = 0
         for m in model.modules():
@@ -160,7 +177,7 @@ def get_model(config):
                     m.dropout = config.dropout
                     n_reset += 1
 
-            if hasattr(
+            if hasattr( 
                 m, "activation_dropout"
             ):  # Requires for BART, which uses F.dropout
                 if isinstance(m.activation_dropout, float):
@@ -177,6 +194,7 @@ def get_model(config):
                 f"Params {bad_inner_params} do not exist in model of type {type(model)}."
             )
 
+    # memory effieicnt: half
     if config.no_grad_layers is not None:
         if config.half:
             model.bfloat16()

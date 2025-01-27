@@ -10,7 +10,7 @@ class EditableModel(nn.Module):
     def __init__(self, model, config, model_constructor):
         super().__init__()
 
-        self.model = model
+        self.model = model # LlavaLlAMAForCausalLM
         self.config = deepcopy(config)
         self.model_constructor = model_constructor
 

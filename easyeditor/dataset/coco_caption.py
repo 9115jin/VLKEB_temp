@@ -32,8 +32,8 @@ class CaptionDataset(BaseDataset):
         # get tokenizer and vis_processor
         if config.model_class == "Blip2OPT":
             vis_processor = BlipImageEvalProcessor(image_size=364, mean=None, std=None)
-        elif config.model_class == "LLaVA":
-            vis_processor = transformers.CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14-336")
+        elif config.model_class == "LLaVA": # Load ViT 
+            vis_processor = transformers.CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14-336") 
         elif config.model_class ==  "qwen-vl":
             vis_processor = BlipImageEvalProcessor(image_size=448, mean=None, std=None)
         elif "owl-2" in config.model_name.lower():
@@ -44,7 +44,7 @@ class CaptionDataset(BaseDataset):
 
         if (config is not None and hasattr(config, 'tokenizer_name')):
             tok_name = (
-                config.tokenizer_name
+                config.tokenizer_name # llava-v1.5-7B(ex: LLAVA)
                 if config.tokenizer_name is not None
                 else config.name
             )
@@ -55,13 +55,13 @@ class CaptionDataset(BaseDataset):
             else:
                 tokenizer = getattr(transformers, config.tokenizer_class).from_pretrained(
                     tok_name, trust_remote_code=True
-                )            
+                ) # LlamaTokenizer('hugging_cache/llava-v1.5-7b')
             if tokenizer.pad_token == None or tokenizer.pad_token == '':
                 tokenizer.pad_token = tokenizer.eos_token  
                 
         vis_root = config.coco_image
         rephrase_root = config.rephrase_image
-        super().__init__(vis_processor, vis_root, rephrase_root, [data_dir])
+        super().__init__(vis_processor, vis_root, rephrase_root, [data_dir]) # image 2개(rel-i-gen) & multhop.json
 
         self.config = config
         self.tok = tokenizer
@@ -79,40 +79,45 @@ class CaptionDataset(BaseDataset):
             port_type = port_types[int(hop)]
         for record in tqdm(self.annotation, ncols=120, desc='Loading Data'):
             
-            if record['alt'] == "":
+            if record['alt'] == "": # e -> e`?`(rel)
                 continue
-            if hop and 'port_new' not in record.keys():
+            if hop and 'port_new' not in record.keys(): # port 질문 있는지?
                 continue
             
+            # 이미지 로딩
             image_path = os.path.join(self.vis_root, record["image"])
             rephrase_image_path = os.path.join(self.rephrase_root, record["image_rephrase"])
             locality_image_path = os.path.join(self.vis_root, record['m_loc'])
             
+            # Visual Edit(Reliability, T-Generality, I-Generality)
             item = {
-                'prompt': record['src'],
-                'pred': record['pred'],
-                'target': record['alt'],
-                'rephrase_prompt': record['rephrase'],
+                'prompt': record['src'],# rel
+                'pred': record['pred'], # e
+                'target': record['alt'],# e`
+                'rephrase_prompt': record['rephrase'], # t-gen
                 # 'image': image,
                 # 'image_rephrase': rephrase_image,
                 'image': image_path,
-                'image_rephrase': rephrase_image_path,
-                'cond': "{} >> {} || {}".format(
+                'image_rephrase': rephrase_image_path, # i-gen
+                'cond': "{} >> {} || {}".format( # ??
                     record['pred'],
                     record['alt'],
                     record['src']
                 )
             }
             
+            # T-Locality
             item['locality_prompt'] = record['loc']
             item['locality_ground_truth'] = record['loc_ans']
             
+            # I-Locality
             # item['multimodal_locality_image'] = locality_image
             item['multimodal_locality_image'] = locality_image_path
 
             item['multimodal_locality_prompt'] = record['m_loc_q']
             item['multimodal_locality_ground_truth'] = record['m_loc_a']
 
+            # Portability
             if hop and 'port_new' in record.keys():
                 item['portability_prompt'] = []
                 item['portability_ground_truth'] = []

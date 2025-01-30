@@ -32,7 +32,7 @@ class CaptionDataset(BaseDataset):
             vis_processor = transformers.CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14-336")
         else:
             raise NotImplementedError("unknown model class")
-
+        # Load Tokenizer
         if (config is not None and hasattr(config, 'tokenizer_name')):
             tok_name = (
                 config.tokenizer_name
@@ -47,13 +47,13 @@ class CaptionDataset(BaseDataset):
                 
         vis_root = config.coco_image
         rephrase_root = config.rephrase_image
-        super().__init__(vis_processor, vis_root, rephrase_root, [data_dir])
+        super().__init__(vis_processor, vis_root, rephrase_root, [data_dir]) # eval_multohop.json -> image 관련 설정?
 
         self.config = config
         self.tok = tokenizer
         self.max_length = 32
 
-        self.prompt = "Question: {} Short answer: "
+        self.prompt = "Question: {} Short answer: " # 어디에 쓰이지? 학습? Inference?
 
         data = []
         if size is not None:
@@ -65,11 +65,12 @@ class CaptionDataset(BaseDataset):
             port_type = port_types[int(hop)]
         for record in tqdm(self.annotation, ncols=120, desc='Loading Data'):
             
-            if record['alt'] == "":
+            if record['alt'] == "": # 편집할 내용 없으면 패스
                 continue
-            if hop and 'port_new' not in record.keys():
+            if hop and 'port_new' not in record.keys(): # Portability Data 아니면 패스(1-hop)
                 continue
             
+            # 이미지 관련 경로
             image_path = os.path.join(self.vis_root, record["image"])
             rephrase_image_path = os.path.join(self.rephrase_root, record["image_rephrase"])
             locality_image_path = os.path.join(self.vis_root, record['m_loc'])
@@ -91,13 +92,14 @@ class CaptionDataset(BaseDataset):
                 # 'image_rephrase': rephrase_image,
                 'image': image_path,
                 'image_rephrase': rephrase_image_path,
-                'cond': "{} >> {} || {}".format(
+                'cond': "{} >> {} || {}".format(  # 원본(pred) -> 편집(alt)  ||  질문(src)
                     record['pred'],
                     record['alt'],
                     record['src']
                 )
             }
             
+            # Text-Locality
             item['locality_prompt'] = record['loc']
             item['locality_ground_truth'] = record['loc_ans']
             

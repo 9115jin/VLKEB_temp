@@ -104,9 +104,23 @@ def get_model(config):
 
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
-    elif config.model_name == "llava":
+    elif config.model_name == "llava": ## LLAVA 모델은 여기서! ## 
+        # 모델 로드
         from .llava.model.builder import load_pretrained_model
-        model = load_pretrained_model(model_path=config.name, device=config.device)
+        if getattr(config, 'use_lora', False): # 기존 모델 불러옴(LLAVA)
+            model = load_pretrained_model(
+                model_path=config.name,
+                device=config.device,
+                use_lora=config.use_lora,
+                lora_r=config.lora_r,
+                lora_alpha=config.lora_alpha,
+                lora_dropout=config.lora_dropout,
+                lora_target_modules=config.lora_target_modules,
+                inner_params=config.inner_params
+            )
+            
+        else: # LoRA 적용된 LLAVA
+            model = load_pretrained_model(model_path=config.name, device=config.device)
         
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")

@@ -4,7 +4,7 @@ import types
 from statistics import mean
 
 from easyeditor import BaseEditor, MultimodalTrainer, MultimodalEditor
-from easyeditor import CaptionDataset, VQADataset
+from easyeditor import CaptionDataset, VQADataset, TextualDataset, CompositionalDataset
 from easyeditor import MENDMultimodalTrainingHparams, SERACMultimodalTrainingHparams, IKEMultimodalHyperParams, MENDMultimodalHparams \
     , SERACMultimodalHparams, FTMultimodalHparams
 from easyeditor import encode_ike_facts_multimodal
@@ -139,6 +139,48 @@ def test_LLaVA_SERAC():
         val_set=eval_ds
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
+
+def test_LLaVA_LORA():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_lora_slowly.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial(log=True, gap_num=gap_num)
+
+def test_LLaVA_VisEdit():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_vis_edit.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, gap_num=gap_num)
+
+def test_LLaVA_TextualEdit():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_textual_edit.yaml')
+    eval_ds = TextualDataset('datasets/train_textual_edit.json', config=hparams, hop=hop, no_image=True)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_textual(log=True, gap_num=gap_num)
+
+def test_LLaVA_CompositionalEdit():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit.yaml')
+    eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, gap_num=gap_num)
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
+
 
 
 if __name__ == "__main__":

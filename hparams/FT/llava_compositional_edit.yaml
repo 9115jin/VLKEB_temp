@@ -1,22 +1,26 @@
 # Model
-device: 4
+device: 4 
 
-alg_name: "FT"
+alg_name: "LORA"
 name: hugging_cache/llava-v1.5-7b
 model_name: llava
 model_class: LLaVA
 tokenizer_class: LlamaTokenizer
 tokenizer_name: hugging_cache/llava-v1.5-7b
-inner_params:
-# - model.layers.29.mlp.down_proj.weight
-# - model.layers.29.mlp.up_proj.weight
-# - model.layers.30.mlp.down_proj.weight
-# - model.layers.30.mlp.up_proj.weight
-- model.layers.31.mlp.down_proj.weight
-- model.layers.31.mlp.up_proj.weight
+inner_params: []
+
+# LoRA - visual / testual 2개
+use_lora: True
+lora_r: 8
+lora_alpha: 32
+lora_dropout: 0.1
+lora_target_modules:
+  - down_proj
+  - up_proj
+
 
 # Method
-alg: ft
+alg: lora
 num_steps: 10
 lr: 1e-6
 edit_lr: 1e-4

@@ -32,7 +32,7 @@ class BaseTrainer:
     def __init__(self, config, train_set: Dataset, val_set: Dataset):
         LOG.info(f'Config: {config}')
         model_ = get_model(config)
-        self.alg_module = ALG_TRAIN_DICT[config.alg.upper()]
+        self.alg_module = ALG_TRAIN_DICT[config.alg.upper()]      
         LOG.info(f"Loading class {config.alg.upper()} from module {self.alg_module}")
         self.model = self.alg_module(model_, config, lambda: copy.deepcopy(model_))
 
@@ -43,8 +43,10 @@ class BaseTrainer:
             self.original_model.load_state_dict(self.model.model.state_dict())
             self.original_model.to(self.config.device)
         else:
-            self.original_model = self.model.model
-
+            self.original_model = self.model.model # FT -> LlavaLlamaCasualLM로 풀어줌 
+            if config.use_lora: ## 추가 부분 ##
+                self.original_model = self.original_model.model # or self.original_model.base_model
+                # self.model = ~~(peft -> Llava..로 벗겨야될지)
         if self.config.model_parallel:
             self.config.device = self.model.model.device
         if not self.config.model_parallel and hasattr(self.config, 'device'):

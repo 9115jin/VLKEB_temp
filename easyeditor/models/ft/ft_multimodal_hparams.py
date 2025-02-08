@@ -98,6 +98,8 @@ class FTMultimodalHparams(HyperParams):
     lora_dropout: float = 0.1
     lora_target_modules: Optional[List[str]] = field(default_factory=list)
     lora_connector_type: bool = None
+    for_eval: bool = False
+    adapter_path: str = None
 
     @classmethod
     def from_hparams(cls, hparams_name_or_path: str):

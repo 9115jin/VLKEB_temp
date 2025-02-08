@@ -32,6 +32,8 @@ def load_pretrained_model(
     lora_dropout=0.1,
     lora_target_modules=["down_proj", "up_proj"],
     connector_type: Optional[str] = None, 
+    for_eval: Optional[bool] = None,
+    adapter_path: Optional[str] = None,
     **kwargs
 ) -> LlavaLlamaForCausalLM:
     
@@ -66,48 +68,58 @@ def load_pretrained_model(
     #3) LoRA 적용
     if use_lora:
         from peft import get_peft_model, LoraConfig, TaskType
-        lora_config = LoraConfig(
-                task_type=TaskType.CAUSAL_LM, # 
-                r=lora_rank,
-                lora_alpha=lora_alpha,
-                lora_dropout=lora_dropout,
-                target_modules=lora_target_modules
-            )
-        
+
         mix_lora = True
-        if use_two_lora:
-            if not mix_lora:
-                # peft 
+        if use_two_lora: # two lora
+            if not mix_lora: # peft 
+                lora_config = LoraConfig(
+                    task_type=TaskType.CAUSAL_LM, # 
+                    r=lora_rank,
+                    lora_alpha=lora_alpha,
+                    lora_dropout=lora_dropout,
+                    target_modules=lora_target_modules
+                )
+        
                 model = get_peft_model(model, lora_config)
                 model.add_adapter(peft_config=lora_config, adapter_name = "visual")
                 model.add_adapter(peft_config=lora_config, adapter_name = "textual")
                 model.delete_adapter("default")
 
-            else: # 이부분으로 실행
+            else: # ★★ PeftMixedmodel 사용: Connector사용시, PeftMixedModel 사용 필수 ★★
+
                 from peft import PeftMixedModel
-                model = PeftMixedModel(model, lora_config, adapter_name="visual")
-                model.add_adapter(peft_config=lora_config, adapter_name="textual")
+                if for_eval: # test(load pretrained weights) | optional: adapter - init from scratch(구현 필요)
+                    model = PeftMixedModel.from_pretrained(model, os.path.join(adapter_path, "visual"), "visual")
+                    model.load_adapter(os.path.join(adapter_path, "textual"), adapter_name="textual")
+                    
+                    if connector_type:
+                        model.load_adapter(os.path.join(adapter_path, "connector"), adapter_name="connector")
 
-            if connector_type:
-                if connector_type == "ffn":
-                    connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=lora_rank,
-                        lora_alpha=16,
-                        lora_dropout=0.05,
-                        target_modules=lora_target_modules
-                    )
-                elif connector_type == "attention":
-                    connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=lora_rank,
-                        lora_alpha=16,
-                        lora_dropout=0.1,
-                        target_modules=["q_proj", "k_proj"]
-                    )
 
-                model.add_adapter(peft_config=connector_config, adapter_name="connector")
-                print("-> Connector 장착 완료")
+                else: # train(add new adapter)
+                    model = PeftMixedModel(model, lora_config, adapter_name="visual")
+                    model.add_adapter(peft_config=lora_config, adapter_name="textual")
+
+                    if connector_type: # connector 설정
+                        if connector_type == "ffn":
+                            connector_config = LoraConfig(
+                                task_type=TaskType.CAUSAL_LM,
+                                r=lora_rank,
+                                lora_alpha=16,
+                                lora_dropout=0.05,
+                                target_modules=lora_target_modules
+                            )
+                        elif connector_type == "attention":
+                            connector_config = LoraConfig(
+                                task_type=TaskType.CAUSAL_LM,
+                                r=lora_rank,
+                                lora_alpha=16,
+                                lora_dropout=0.1,
+                                target_modules=["q_proj", "k_proj"]
+                            )
+
+                        model.add_adapter(peft_config=connector_config, adapter_name="connector")
+                        print("-> Connector 장착 완료")
 
 
 

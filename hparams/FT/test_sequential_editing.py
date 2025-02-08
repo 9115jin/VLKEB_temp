@@ -359,13 +359,14 @@ def test_LLaVA_CompositionalEdit_Connector_attention():
 # Two LorA + Connector(Self-Attention) - eval
 def test_LLaVA_CompositionalEdit_Connector_attention_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_eval.yaml')
+    #eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
     eval_ds = CompositionalDataset('datasets/eval_compositional_edit.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional_connector_attention_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional_connector_attention_eval(log=True, test_num=3 ,gap_num=gap_num) # 600개부터 터짐
  
 # Two LorA + Connector(Self-Attention)
 def test_LLaVA_CompositionalEdit_Connector_attention_rag():

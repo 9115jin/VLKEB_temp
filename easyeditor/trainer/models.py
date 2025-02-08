@@ -116,7 +116,9 @@ def get_model(config):
                 lora_alpha=config.lora_alpha,
                 lora_dropout=config.lora_dropout,
                 lora_target_modules=config.lora_target_modules,
-                connector_type=config.lora_connector_type
+                connector_type=config.lora_connector_type,
+                for_eval=config.for_eval,
+                adapter_path=config.adapter_path
                 #inner_params=config.inner_params
             )
             

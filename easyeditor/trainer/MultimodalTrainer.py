@@ -4503,7 +4503,7 @@ class MultimodalTrainer(BaseTrainer):
             else:
                 break
         pbar.close()
-
+                                                      
         ## 2. Model edit & Test ##
         edited_model = self.model
         pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
@@ -4516,12 +4516,6 @@ class MultimodalTrainer(BaseTrainer):
             # 2.1.2) Textual Edit(second) 
             self.model.model.set_adapter("textual")  # PEFT -> set_adapter
             edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
-
-            # 2.1.3) Compositional Edit(second) ★ mlp 학습 o
-            if val_step > 5:
-                edited_model.model.set_adapter(["textual","visual","connector"])
-                edited_model, _ = edited_model.edit(batch["port"][0], connector_mode=True) # cond? 이거 안되나
-
 
             # 2.2) Test with GAP
             if val_step >= gap_num: 
@@ -4556,32 +4550,9 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"results/results_sequencial/composition/two_lora_connect_attention/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        results_path = f"results/results_sequencial/composition/two_lora_connect_attention/eval/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
         
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
-        if gap_num == 0:
-            try: # lora weight 저장
-                from peft import LoraConfig, TaskType, get_peft_model, PeftConfig, PeftModel
-                connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=8,
-                        lora_alpha=16,
-                        lora_dropout=0.05,
-                        target_modules=["q_proj", "k_proj"]
-                    )
-                
-                peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
-                peft_model.delete_adapter("default")
-                peft_model = peft_model.cpu()
-                peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_attention")
-                # 저장 후 메모리 해제
-                del peft_model
-
-                torch.cuda.empty_cache()
-                print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_attention\" ")
-            except:
-                print("LoRA, MLP 모델 저장 실패")
-
         with open(results_path, "w") as f:
             json.dump(
                 {"results": stats}, f

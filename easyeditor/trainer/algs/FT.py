@@ -66,21 +66,14 @@ class FT(EditableModel):
 
         ## 업데이트하고자 하는 파라미터 명시: inner_params / LoRA... ##
         if not self.config.inner_params:  # inner_params가 비어 있는 경우
-            if connector_mode:  # 예: self.config.update_connector == True
+            if connector_mode: 
                     weights = {
                         n: p
                         for n, p in self.model.named_parameters()
                         if ("connector" in n) #MLP 파라미터만 업데이트
                     }
-
-                    ## MLP Layer
-                    # weights = {
-                    #     n: p
-                    #     for n, p in self.model.named_parameters()
-                    #     if ("down_proj.mlp" in n or "up_proj.mlp" in n) #MLP 파라미터만 업데이트
-                    # }
-            else:
-                if peft:
+            else: # without Connector 
+                if peft: # for peft 
                     if mode == "visual":
                         # visual 어댑터에 해당하는 파라미터만 선택 (default는 제외)
                         weights = {n: p for n, p in self.model.named_parameters() 
@@ -98,7 +91,7 @@ class FT(EditableModel):
                             if "lora" in n  # 기존 방식: LoRA 파라미터만 업데이트
                         }
                     
-                else:
+                else: # for custom code
                     if mode == "visual":
                         weights = {
                             n: p

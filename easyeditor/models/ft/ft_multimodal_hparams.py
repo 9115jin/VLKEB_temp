@@ -97,6 +97,7 @@ class FTMultimodalHparams(HyperParams):
     lora_alpha: int = 16
     lora_dropout: float = 0.1
     lora_target_modules: Optional[List[str]] = field(default_factory=list)
+    lora_connector_type: bool = None
 
     @classmethod
     def from_hparams(cls, hparams_name_or_path: str):

@@ -4,4 +4,4 @@ from .coco_caption import CaptionDataset
 from .vqa import VQADataset
 from .wiki_recent import WikiRecentDataset
 from .knowedit import KnowEditDataset
-from .vlkeb_textual_edit import TextualDataset, CompositionalDataset
+from .vlkeb_textual_edit import TextualDataset, CompositionalDataset, CompositionalDataset_RAG, CompositionalDataset_RAG_Simple

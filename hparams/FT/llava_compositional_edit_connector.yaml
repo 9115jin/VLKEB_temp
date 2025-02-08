@@ -1,5 +1,5 @@
 # Model
-device: 3 
+device: 6
 
 alg_name: "LORA"
 name: hugging_cache/llava-v1.5-7b
@@ -11,13 +11,13 @@ inner_params: []
 
 # LoRA - visual / testual 2개
 use_lora: True
-lora_r: 8
+lora_r: 16
 lora_alpha: 32
 lora_dropout: 0.1
 lora_target_modules:
   - down_proj
   - up_proj
-
+lora_connector_type: "one" # "two"
 
 # Method
 alg: lora

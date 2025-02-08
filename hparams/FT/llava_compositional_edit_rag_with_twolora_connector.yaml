@@ -1,5 +1,5 @@
 # Model
-device: 3 
+device: 5
 
 alg_name: "LORA"
 name: hugging_cache/llava-v1.5-7b

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import transformers
 from transformers import GPT2Tokenizer, GPT2TokenizerFast
-from transformers import LlavaPreTrainedModel
+#from transformers import LlavaPreTrainedModel
 
 from .utils import scr
 
@@ -104,10 +104,10 @@ def get_model(config):
 
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
-    elif config.model_name == "llava": ## LLAVA 모델은 여기서! ## 
+    elif config.model_name == "llava": ## LLAVA 모델은 여기서 ## 
         # 모델 로드
         from .llava.model.builder import load_pretrained_model
-        if getattr(config, 'use_lora', False): # 기존 모델 불러옴(LLAVA)
+        if getattr(config, 'use_lora', False): # LoRA 적용된 LLAVA
             model = load_pretrained_model(
                 model_path=config.name,
                 device=config.device,
@@ -116,10 +116,11 @@ def get_model(config):
                 lora_alpha=config.lora_alpha,
                 lora_dropout=config.lora_dropout,
                 lora_target_modules=config.lora_target_modules,
-                inner_params=config.inner_params
+                connector_type=config.lora_connector_type
+                #inner_params=config.inner_params
             )
             
-        else: # LoRA 적용된 LLAVA
+        else: # 기존 모델 불러옴(LLAVA)
             model = load_pretrained_model(model_path=config.name, device=config.device)
         
         # for name, param in model.named_parameters():

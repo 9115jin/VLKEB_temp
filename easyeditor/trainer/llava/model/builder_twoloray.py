@@ -67,53 +67,23 @@ def load_pretrained_model(
     if use_lora:
         from peft import get_peft_model, LoraConfig, TaskType
         lora_config = LoraConfig(
-                task_type=TaskType.CAUSAL_LM, # 
+                task_type=TaskType.CAUSAL_LM,
                 r=lora_rank,
                 lora_alpha=lora_alpha,
                 lora_dropout=lora_dropout,
                 target_modules=lora_target_modules
             )
         
-        mix_lora = True
+
         if use_two_lora:
-            if not mix_lora:
-                # peft 
-                model = get_peft_model(model, lora_config)
-                model.add_adapter(peft_config=lora_config, adapter_name = "visual")
-                model.add_adapter(peft_config=lora_config, adapter_name = "textual")
-                model.delete_adapter("default")
-
-            else: # 이부분으로 실행
-                from peft import PeftMixedModel
-                model = PeftMixedModel(model, lora_config, adapter_name="visual")
-                model.add_adapter(peft_config=lora_config, adapter_name="textual")
-
-            if connector_type:
-                if connector_type == "ffn":
-                    connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=lora_rank,
-                        lora_alpha=16,
-                        lora_dropout=0.05,
-                        target_modules=lora_target_modules
-                    )
-                elif connector_type == "attention":
-                    connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=lora_rank,
-                        lora_alpha=16,
-                        lora_dropout=0.1,
-                        target_modules=["q_proj", "k_proj"]
-                    )
-
-                model.add_adapter(peft_config=connector_config, adapter_name="connector")
-                print("-> Connector 장착 완료")
-
-
+            # peft 
+            model = get_peft_model(model, lora_config)
+            model.add_adapter(peft_config=lora_config, adapter_name = "visual")
+            model.add_adapter(peft_config=lora_config, adapter_name = "textual")
 
         else: 
             model = get_peft_model(model, lora_config)
-
+        
         print("-> L O R A 장 착 완 료")
 
     # initialize vision modeles(or Load ViT?)

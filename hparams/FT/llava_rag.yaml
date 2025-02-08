@@ -1,7 +1,7 @@
 # Model
-device: 3 
+device: 7
 
-alg_name: "LORA"
+alg_name: "FT"
 name: hugging_cache/llava-v1.5-7b
 model_name: llava
 model_class: LLaVA
@@ -9,19 +9,9 @@ tokenizer_class: LlamaTokenizer
 tokenizer_name: hugging_cache/llava-v1.5-7b
 inner_params: []
 
-# LoRA - visual / testual 2개
-use_lora: True
-lora_r: 8
-lora_alpha: 32
-lora_dropout: 0.1
-lora_target_modules:
-  - down_proj
-  - up_proj
-
-
 # Method
-alg: lora
-num_steps: 10
+alg: ft
+num_steps: 0
 lr: 1e-6
 edit_lr: 1e-4
 lr_lr: 1e-4

@@ -47,10 +47,10 @@ class FT(EditableModel):
     # Inference
     def forward(self, *inputs, **kwargs):
         if 'minigpt4' in self.config.model_name.lower() or 'blip' in self.config.model_name.lower() or 'llava' in self.config.model_name.lower():
-            if self.config.use_lora: # LoRA의 경우, PeftModelForCasualLM -> LLavaLlamaCasualLM으로 래핑을 벗겨내야됨
+            if self.config.use_lora and self.config.lora_connector_type in ["attention", "ffn"] : # LoRA의 경우, PeftModelForCasualLM -> LLavaLlamaCasualLM으로 래핑을 벗겨내야됨
                 outputs = self.model.base_model(*inputs, **kwargs)
             else:
-                outputs = self.model(*inputs, **kwargs) # FT 
+                outputs = self.model(*inputs, **kwargs) # FT, custom model
         else:
             raise not NotImplementedError("Model not supported")
         return outputs
@@ -58,19 +58,65 @@ class FT(EditableModel):
     def outer_parameters(self):
         return None
 
-    # Edit? Fot What? (Update Model)
-    def edit(self, batch, condition=None, detach_history=False, return_factors=False):
+    # Edit(Update Model)
+    def edit(self, batch, condition=None, detach_history=False, return_factors=False, connector_mode=False, mode=None, peft=None):
         self.model.train()
         # if self.save_weight:
         #     self.model.load_state_dict(self.save_weight, strict=False)
 
         ## 업데이트하고자 하는 파라미터 명시: inner_params / LoRA... ##
         if not self.config.inner_params:  # inner_params가 비어 있는 경우
-            weights = {
-                n: p
-                for n, p in self.model.named_parameters()
-                if "lora" in n  # LoRA 파라미터만 선택
-            }
+            if connector_mode:  # 예: self.config.update_connector == True
+                    weights = {
+                        n: p
+                        for n, p in self.model.named_parameters()
+                        if ("connector" in n) #MLP 파라미터만 업데이트
+                    }
+
+                    ## MLP Layer
+                    # weights = {
+                    #     n: p
+                    #     for n, p in self.model.named_parameters()
+                    #     if ("down_proj.mlp" in n or "up_proj.mlp" in n) #MLP 파라미터만 업데이트
+                    # }
+            else:
+                if peft:
+                    if mode == "visual":
+                        # visual 어댑터에 해당하는 파라미터만 선택 (default는 제외)
+                        weights = {n: p for n, p in self.model.named_parameters() 
+                                if "lora" in n and "visual" in n}
+                    elif mode == "textual":
+                        # textual 어댑터에 해당하는 파라미터만 선택
+                        weights = {n: p for n, p in self.model.named_parameters() 
+                                if "lora" in n and "textual" in n}
+                    elif mode == "fusion":
+                        print("구현 미정 - connector 작성 예정")
+                    else: # "one" lora 
+                        weights = {
+                            n: p
+                            for n, p in self.model.named_parameters()
+                            if "lora" in n  # 기존 방식: LoRA 파라미터만 업데이트
+                        }
+                    
+                else:
+                    if mode == "visual":
+                        weights = {
+                            n: p
+                            for n, p in self.model.named_parameters()
+                            if "lora_visual" in n  # 기존 방식: LoRA visual 파라미터만 업데이트
+                        }
+                    elif mode == "textual":
+                        weights = {
+                            n: p
+                            for n, p in self.model.named_parameters()
+                            if "lora_textual" in n  # 기존 방식: LoRA 파라미터만 업데이트
+                        }
+                    else: # "one" lora 
+                        weights = {
+                            n: p
+                            for n, p in self.model.named_parameters()
+                            if "lora" in n  # 기존 방식: LoRA 파라미터만 업데이트
+                        }
         
         elif self.config.inner_params[0] in ['Qformer', 'mm_projector']:
             weights = {
@@ -94,18 +140,24 @@ class FT(EditableModel):
         # self.save_weight = {k: v.detach().clone() for k, v in weights.items()}
         ########
 
-        # ### Debug: Lora 있는지?, 학습가능한건? ###
+        ### Debug: Lora 있는지?, 학습가능한건? ###
         # print("==== Model Parameter Names ====")
         # for name, param in self.model.named_parameters():
         #     print(name)
 
-        # ### -------------------------------- ###
+        # # ### -------------------------------- ###
 
-        
+        if not connector_mode:
+            edit_lr = self.config.edit_lr/5
+        else:
+            edit_lr = self.config.edit_lr
+
         opt = torch.optim.AdamW(
-            [v for _, v in weights.items()],
-            lr=self.config.edit_lr
+                [v for _, v in weights.items()],
+                lr=edit_lr
         )
+                   
+        # 업데이트 하고싶은 파라미터 불러오기
         for name, w in self.model.named_parameters():
             w.requires_grad = name in weights
 
@@ -116,19 +168,44 @@ class FT(EditableModel):
                 opt.zero_grad()
 
                 ### For Edit with LoRA, !Unwrapping! is required ###
-                if self.config.use_lora: #print("\nUSE LORA: for error input_ids")
+                if self.config.use_lora or self.config.lora_connector_type in ["attention", "ffn"]: 
                     outputs = self.model.model(batch) # PeftModelForCasualLM -> LlavaLlamaForCausalLM (LoRA: PeftModelForCasualLM) 
+                
+                elif self.config.lora_connector_type == "one":
+                    if connector_mode:
+                        for module in self.model.modules():
+                            if hasattr(module, "use_connector"):
+                                module.use_connector()
+
+                    outputs = self.model(batch) #true면 lora+mlp, false면 lora
+
+                elif self.config.lora_connector_type == "two":
+                    for module in self.model.modules():
+                        if hasattr(module, "use_vis_adapter"):
+                            if mode == "visual":
+                                module.use_vis_adapter()
+                            elif mode == "textual" and hasattr(module, "use_text_adapter"):
+                                module.use_text_adapter()
+                            elif mode == "fusion" and hasattr(module, "use_connector"):
+                                module.use_connector()
+
+                    outputs = self.model(batch)
+
                 else:
                     outputs = self.model(batch) # 입력 edit sample에 대한 출력(FT: LlavaLlamaForCausalLM)
 
                 if not isinstance(outputs, torch.Tensor):
                     outputs = outputs.logits
-                loss = self.edit_loss_fn(self.config, outputs, batch["labels"])["nll"]
+                loss = self.edit_loss_fn(self.config, outputs, batch["labels"])["nll"] # torch.Size([1, 595, 32000]), torch.Size([1, 5])
                 pbar.set_postfix({"loss": loss.item()})
+                
+                torch.autograd.set_detect_anomaly(True) # for debug
                 loss.backward()
 
                 opt.step()
 
+                if connector_mode and it >= 2: # connector는 3번만 업데이트
+                    break
 
         else:
             raise not NotImplementedError("Model not supported")

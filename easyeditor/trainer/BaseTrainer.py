@@ -46,7 +46,7 @@ class BaseTrainer:
             self.original_model = self.model.model # FT -> LlavaLlamaCasualLM로 풀어줌 
             if config.use_lora: ## 추가 부분 ##
                 self.original_model = self.original_model.model # or self.original_model.base_model
-                # self.model = ~~(peft -> Llava..로 벗겨야될지)
+                # self.model = ~~(peft -> Llava..로 벗겨야될지) # (twolora: FT -> (Llava)?)
         if self.config.model_parallel:
             self.config.device = self.model.model.device
         if not self.config.model_parallel and hasattr(self.config, 'device'):

@@ -294,15 +294,25 @@ class MultimodalTrainer(BaseTrainer):
         
         # compositional
         port_acc = f"{stats['port/acc_val']:<12.5f}"
-        
-        LOG.info(
-            f"Step {prog} | "
-            f"[Visual Edit] - inner_acc: {v_inner_acc} outer_acc: {v_outer_acc} img_acc: {v_image_acc}| "
-            f"loc_acc: {v_loc_acc} img_loc_acc: {v_loc_image_acc}                                     | "
-            f"[Textual Edit] - inner_acc: {t_inner_acc} outer_acc: {t_outer_acc} loc_acc: {t_loc_acc} | "
-            f"[Compositional Edit] - Port_acc: {port_acc}                                             | " 
-            f"it_time: {elapsed:.4f}s"
-        )
+        if self.config.for_eval:
+            port_ratio = f"{stats['port/ratio_val']:<12.5f}"
+            LOG.info(
+                f"Step {prog} | "
+                f"[Visual Edit] - inner_acc: {v_inner_acc} outer_acc: {v_outer_acc} img_acc: {v_image_acc}| "
+                f"loc_acc: {v_loc_acc} img_loc_acc: {v_loc_image_acc}                                     | "
+                f"[Textual Edit] - inner_acc: {t_inner_acc} outer_acc: {t_outer_acc} loc_acc: {t_loc_acc} | "
+                f"[Compositional Edit] - Port_acc: {port_acc} Port_ratio: {port_ratio}                    | "                       
+                f"it_time: {elapsed:.4f}s"
+            )
+        else:
+            LOG.info(
+                f"Step {prog} | "
+                f"[Visual Edit] - inner_acc: {v_inner_acc} outer_acc: {v_outer_acc} img_acc: {v_image_acc}| "
+                f"loc_acc: {v_loc_acc} img_loc_acc: {v_loc_image_acc}                                     | "
+                f"[Textual Edit] - inner_acc: {t_inner_acc} outer_acc: {t_outer_acc} loc_acc: {t_loc_acc} | "
+                f"[Compositional Edit] - Port_acc: {port_acc}                                             | " 
+                f"it_time: {elapsed:.4f}s"
+            )
 
     ## TEST(실제 inference, acc 측정)
     def test_sequencial_step(self, batch, edited_model, base_logits, base_image_logits):
@@ -3530,8 +3540,8 @@ class MultimodalTrainer(BaseTrainer):
 
         return info_dict
 
-    # TEST - compositonal - two lora + Connector(ffn) - eval
-    def test_sequencial_compositional_connector_ffn_eval(self, log: bool = False, test_num=200, gap_num=0):
+    # TEST - compositonal - two lora + Connector(공통) - eval
+    def test_sequencial_compositional_connector_eval(self, log: bool = False, test_num=200, gap_num=0):
         from datetime import datetime
         cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
         self.model.train(True)
@@ -3586,7 +3596,7 @@ class MultimodalTrainer(BaseTrainer):
             else:
                 break
         pbar.close()
-
+                                                      
         ## 2. Model edit & Test ##
         edited_model = self.model
         pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
@@ -3600,11 +3610,6 @@ class MultimodalTrainer(BaseTrainer):
             self.model.model.set_adapter("textual")  # PEFT -> set_adapter
             edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
 
-            # 2.1.3) Compositional Edit(second) ★ mlp 학습 o
-            if val_step > 5:
-                edited_model.model.set_adapter(["textual","visual","connector"])
-                edited_model, _ = edited_model.edit(batch["port"][0], connector_mode=True) # cond? 이거 안되나
-
             # 2.2) Test with GAP
             if val_step >= gap_num: 
                 # 기존 저장했던 batch, t-loc & i-loc-logit 불러옴. For Test
@@ -3614,14 +3619,14 @@ class MultimodalTrainer(BaseTrainer):
                 stored_base_logits_tex = base_logits_store_tex.pop(0)
 
                 # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
-                info_dict = self.test_sequencial_compositional_connector_ffn_eval_step(
+                info_dict = self.test_sequencial_compositional_connector_eval_step(
                     stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
                     )
                 averager.add(info_dict)
 
             # logging?
             if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
-                self._inline_seq_log_CompositionalEdit( ## ★☆★ 수정 필요 ★☆★ ##
+                self._inline_seq_log_CompositionalEdit( 
                     val_step, averager.average(), start_time, steps
                 )
             pbar.update(1)
@@ -3638,31 +3643,9 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"results/results_sequencial/composition/two_lora_connect_ffn/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        results_path = f"{self.config.adapter_path}/eval/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
         
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
-        if gap_num == 0:
-            try: # lora weight 저장
-                from peft import LoraConfig, TaskType, get_peft_model, PeftConfig, PeftModel
-                connector_config = LoraConfig(
-                        task_type=TaskType.CAUSAL_LM,
-                        r=8,
-                        lora_alpha=16,
-                        lora_dropout=0.05,
-                        target_modules=["q_proj", "k_proj"]
-                    )
-                peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
-                peft_model.delete_adapter("default")
-                peft_model = peft_model.cpu()
-                peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_ffn")
-                # 저장 후 메모리 해제
-                del peft_model
-
-                torch.cuda.empty_cache()
-                print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_ffn\" ")
-            except:
-                print("LoRA, MLP 모델 저장 실패")
-
         with open(results_path, "w") as f:
             json.dump(
                 {"results": stats}, f
@@ -3674,7 +3657,7 @@ class MultimodalTrainer(BaseTrainer):
     
 
         ## TEST - compositonal - two
-    def test_sequencial_compositional_connector_ffn_eval_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
+    def test_sequencial_compositional_connector_eval_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
         info_dict = {}
 
         ##############################################################################
@@ -3830,10 +3813,11 @@ class MultimodalTrainer(BaseTrainer):
                 torch.cuda.empty_cache()
 
             info_dict['port/acc'] = port_acc
+            info_dict['port/ratio'] =  port_acc / (info_dict['text/inner/acc'] + inner_edit_dict["acc"].item()) * 2
             ################ portability #################
 
         return info_dict
-    
+
     ###############################################################
     ### --- TEST - compositonal - two lora + Connector(att) --- ###
     def test_sequencial_compositional_connector_attention(self, log: bool = False, test_num=200, gap_num=0):

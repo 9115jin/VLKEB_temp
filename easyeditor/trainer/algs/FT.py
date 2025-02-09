@@ -140,7 +140,7 @@ class FT(EditableModel):
 
         # # ### -------------------------------- ###
 
-        if not connector_mode:
+        if  connector_mode: # 코드실수: connector <-> adapter 다르게 설정함;;
             edit_lr = self.config.edit_lr/5
         else:
             edit_lr = self.config.edit_lr

@@ -25,7 +25,7 @@ adapter_path: "results/results_sequencial/composition/two_lora_connect_attention
 alg: lora
 num_steps: 10
 lr: 1e-6
-edit_lr: 1e-5 # base: 1e-4 
+edit_lr: 5e-5 # base: 1e-4 
 lr_lr: 1e-4
 lr_scale: 1.0
 weight_decay: 0

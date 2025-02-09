@@ -346,7 +346,7 @@ def test_LLaVA_CompositionalEdit_Connector_ffn_rag_eval():
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=2 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
     ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
 
 
@@ -370,7 +370,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_eval():
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional_connector_attention_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
  
 # Two LorA + Connector(Self-Attention) + RAG
 def test_LLaVA_CompositionalEdit_Connector_attention_rag():
@@ -384,13 +384,13 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag():
     trainer.test_sequencial_compositional_connector_attention_rag(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_eval.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional_connector_attention_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
  
 
 

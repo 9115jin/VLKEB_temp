@@ -71,15 +71,14 @@ def load_pretrained_model(
 
         mix_lora = True
         if use_two_lora: # two lora
-            if not mix_lora: # peft 
-                lora_config = LoraConfig(
+            lora_config = LoraConfig(
                     task_type=TaskType.CAUSAL_LM, # 
                     r=lora_rank,
                     lora_alpha=lora_alpha,
                     lora_dropout=lora_dropout,
                     target_modules=lora_target_modules
                 )
-        
+            if not mix_lora: # peft        
                 model = get_peft_model(model, lora_config)
                 model.add_adapter(peft_config=lora_config, adapter_name = "visual")
                 model.add_adapter(peft_config=lora_config, adapter_name = "textual")
@@ -106,7 +105,7 @@ def load_pretrained_model(
                                 task_type=TaskType.CAUSAL_LM,
                                 r=lora_rank,
                                 lora_alpha=16,
-                                lora_dropout=0.05,
+                                lora_dropout=0.1,
                                 target_modules=lora_target_modules
                             )
                         elif connector_type == "attention":

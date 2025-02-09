@@ -3040,7 +3040,7 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"results/results_sequencial/composition/two_lora_connect_ffn/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        results_path = f"results/results_sequencial/composition/two_lora_connect_ffn/new/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
         
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
         if gap_num == 0:
@@ -3056,12 +3056,12 @@ class MultimodalTrainer(BaseTrainer):
                 peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
                 peft_model.delete_adapter("default")
                 peft_model = peft_model.cpu()
-                peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_ffn")
+                peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_ffn/new")
                 # 저장 후 메모리 해제
                 del peft_model
 
                 torch.cuda.empty_cache()
-                print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_ffn\" ")
+                print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_ffn/new\" ")
             except:
                 print("LoRA, MLP 모델 저장 실패")
 
@@ -3813,7 +3813,7 @@ class MultimodalTrainer(BaseTrainer):
                 torch.cuda.empty_cache()
 
             info_dict['port/acc'] = port_acc
-            info_dict['port/ratio'] =  port_acc / (info_dict['text/inner/acc'] + inner_edit_dict["acc"].item()) * 2
+            info_dict['port/ratio'] =  port_acc / (info_dict['vis/inner/acc'] + info_dict['text/inner/acc'] + 1e-8) * 2
             ################ portability #################
 
         return info_dict

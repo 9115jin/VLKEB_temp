@@ -197,7 +197,7 @@ class FT(EditableModel):
 
                 opt.step()
 
-                if connector_mode and it >= 2: # connector는 3번만 업데이트
+                if connector_mode and it >= 2: # connector는 3번만 업데이트 # 5번으로 바꿀까 고민중임 attention만 ? 
                     break
 
         else:

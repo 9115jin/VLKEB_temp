@@ -43,10 +43,14 @@ class BaseTrainer:
             self.original_model.load_state_dict(self.model.model.state_dict())
             self.original_model.to(self.config.device)
         else:
-            self.original_model = self.model.model # FT -> LlavaLlamaCasualLM로 풀어줌 
+            self.original_model = self.model.model # FT -> LlavaLlamaCasualLM로 풀어줌   # (BLIP2-OPT) 
             if config.use_lora: ## 추가 부분 ##
-                self.original_model = self.original_model.model # or self.original_model.base_model
+                if 'blip2' in self.config.model_name.lower():
+                    self.original_model = self.original_model.opt_model # OPTForCausalLM()
+                else:
+                    self.original_model = self.original_model.model # or self.original_model.base_model
                 # self.model = ~~(peft -> Llava..로 벗겨야될지) # (twolora: FT -> (Llava)?)
+                
         if self.config.model_parallel:
             self.config.device = self.model.model.device
         if not self.config.model_parallel and hasattr(self.config, 'device'):

@@ -1,26 +1,27 @@
-# Model # one lora에 vis + text
-device: 6
+# Model
+device: 5
 
-alg_name: "LORA"
-name: hugging_cache/llava-v1.5-7b
-model_name: llava
-model_class: LLaVA
-tokenizer_class: LlamaTokenizer
-tokenizer_name: hugging_cache/llava-v1.5-7b
+alg_name: "LORA" # "FT"
+name: hugging_cache/opt-2.7b
+model_name: blip2
+model_class: Blip2OPT
+tokenizer_class: GPT2Tokenizer
+tokenizer_name: hugging_cache/opt-2.7b
 inner_params: []
 
 # LoRA - visual / testual 2개
 use_lora: True
-lora_r: 16
+lora_r: 8
 lora_alpha: 32
 lora_dropout: 0.1
 lora_target_modules:
-  - down_proj
-  - up_proj
+  - fc1
+  - fc2
+lora_connector_type: "attention" # "two"
 
 
 # Method
-alg: lora
+alg: lora # ft
 num_steps: 10
 lr: 1e-6
 edit_lr: 1e-4
@@ -59,7 +60,7 @@ log_interval: 100
 eval_log_interval: 1000
 final_eval: True
 val_interval: 5000
-early_stop_patience: 5000
+early_stop_patience: 6000
 early_stop_key: "loss/total_edit_val"
 eval_only: True
 half: False
@@ -69,7 +70,7 @@ verbose: True
 
 val_batch_size: 1
 accumulate_bs: 2
-val_steps: 500
+val_steps: 500 # only for debug
 opt: Adam
 grad_clip: 100.
 
@@ -77,11 +78,9 @@ grad_clip: 100.
 results_dir: ./results
 
 # Multimodal
-qformer_checkpoint: null
-qformer_name_or_path: null
-state_dict_file: null
-pretrained_ckpt: null
-
+qformer_checkpoint: hugging_cache/blip2_pretrained_opt2.7b.pth
+qformer_name_or_path: hugging_cache/bert-base-uncased
+state_dict_file: hugging_cache/eva_vit_g.pth
 # image
 coco_image: datasets/VLKEB_images/mmkb_images
 rephrase_image: datasets/VLKEB_images/mmkb_images

@@ -2,8 +2,13 @@
  Copyright (c) 2023, salesforce.com, inc.
  All rights reserved.
  SPDX-License-Identifier: BSD-3-Clause
+ 
+ Modified by Jin Seong (c) 2025
+ This version includes modifications by Jin Seong.
+
  For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 """
+import os
 import logging
 
 import torch
@@ -47,6 +52,16 @@ class Blip2OPT(Blip2Base):
 
     def __init__(
         self,
+        # --- LoRA 옵션
+        use_lora: bool = False,
+        lora_r: int = 8,
+        lora_alpha: int = 32,
+        lora_dropout: float = 0.1,
+        lora_target_modules: list = ["q_proj", "v_proj"],
+        connector_type: Optional[str] = None, 
+        for_eval: Optional[bool] = None,
+        adapter_path: Optional[str] = None,
+        # --- Baseline
         vit_model="eva_clip_g",
         img_size=224,
         drop_path_rate=0,
@@ -76,7 +91,6 @@ class Blip2OPT(Blip2Base):
             self.visual_encoder.train = disabled_train
             logging.info("freeze vision encoder")
 
-        
         self.Qformer, self.query_tokens = self.init_Qformer(
             num_query_token, self.visual_encoder.num_features, qformer_name_or_path
         ) # query_token?
@@ -91,6 +105,68 @@ class Blip2OPT(Blip2Base):
         self.opt_model = OPTForCausalLM.from_pretrained(
             opt_model, torch_dtype=torch.float16
         )
+
+        ## Using LoRA -- CCME
+        use_two_lora = False # two lora  # False: one lora
+        if use_lora:
+            from peft import get_peft_model, LoraConfig, TaskType
+            lora_config = LoraConfig(
+                        task_type=TaskType.CAUSAL_LM, # 
+                        r= lora_r,
+                        lora_alpha=lora_alpha,
+                        lora_dropout=lora_dropout,
+                        target_modules=lora_target_modules
+                    )
+
+            mix_lora = True
+            if use_two_lora: # two lora
+                if not mix_lora: # peft        
+                    self.opt_model = get_peft_model(self.opt_model, lora_config)
+                    self.opt_model.add_adapter(peft_config=lora_config, adapter_name = "visual")
+                    self.opt_model.add_adapter(peft_config=lora_config, adapter_name = "textual")
+                    self.opt_model.delete_adapter("default")
+
+                else: # ★★ PeftMixedmodel 사용: Connector사용시, PeftMixedModel 사용 필수 ★★
+
+                    from peft import PeftMixedModel
+                    if for_eval: # test(load pretrained weights) | optional: adapter - init from scratch(구현 필요)
+                        self.opt_model = PeftMixedModel.from_pretrained(self.opt_model, os.path.join(adapter_path, "visual"), "visual")
+                        self.opt_model.load_adapter(os.path.join(adapter_path, "textual"), adapter_name="textual")
+                        
+                        if connector_type:
+                            self.opt_model.load_adapter(os.path.join(adapter_path, "connector"), adapter_name="connector")
+
+                    else: # train(add new adapter)
+                        self.opt_model = PeftMixedModel(self.opt_model, lora_config, adapter_name="visual")
+                        self.opt_model.add_adapter(peft_config=lora_config, adapter_name="textual")
+
+
+                        if connector_type: # connector 설정
+                            if connector_type == "ffn":
+                                connector_config = LoraConfig(
+                                    task_type=TaskType.CAUSAL_LM,
+                                    r=lora_r,
+                                    lora_alpha=16,
+                                    lora_dropout=0.1,
+                                    target_modules=lora_target_modules
+                                )
+                            elif connector_type == "attention":
+                                connector_config = LoraConfig(
+                                    task_type=TaskType.CAUSAL_LM,
+                                    r=lora_r,
+                                    lora_alpha=16,
+                                    lora_dropout=0.1,
+                                    target_modules=["q_proj", "k_proj"]
+                                )
+
+                            self.opt_model.add_adapter(peft_config=connector_config, adapter_name="connector")
+                            print("-> Connector 장착 완료")
+
+            else: 
+                self.opt_model = get_peft_model(self.opt_model, lora_config)
+            print("-> (BLIP: L O R A 장 착 완 료")
+
+        ### ---- projection ---- ###
         # for name, param in self.opt_model.named_parameters():
         #     param.requires_grad = False
         self.eos_token_id = self.opt_tokenizer(
@@ -117,6 +193,10 @@ class Blip2OPT(Blip2Base):
         self.prompt = prompt
         prompt_tokens = self.opt_tokenizer(self.prompt, return_tensors="pt")
         self.prompt_length = prompt_tokens.attention_mask.sum(1)
+        
+        # llava <-> blip2 호환성 고려하려면 이걸 적용
+        # self.set_adapter = self.opt_model.set_adapter
+        # self.base_model  = self.opt_model.base_model
 
     def forward(self, samples):
         if samples['image'] is not None:
@@ -164,7 +244,9 @@ class Blip2OPT(Blip2Base):
             )
             targets = torch.cat([empty_targets, targets], dim=1)
 
-            inputs_embeds = self.opt_model.model.decoder.embed_tokens(opt_tokens.input_ids)
+            embed_layer   = self.opt_model.get_input_embeddings()      
+            inputs_embeds = embed_layer(opt_tokens.input_ids) 
+
             # print('input_image', inputs_opt.size())
             inputs_embeds = torch.cat([inputs_opt, inputs_embeds], dim=1)
             attention_mask = torch.cat([atts_opt, opt_tokens.attention_mask], dim=1)
@@ -186,8 +268,9 @@ class Blip2OPT(Blip2Base):
             if samples['prompts_len']:
                 for i, prompt_len in enumerate(samples['prompts_len']):
                     targets[i, :prompt_len] = -100
-                    
-            inputs_embeds = self.opt_model.model.decoder.embed_tokens(opt_tokens.input_ids)
+
+            embed_layer   = self.opt_model.get_input_embeddings()      
+            inputs_embeds = embed_layer(opt_tokens.input_ids) 
             attention_mask = opt_tokens.attention_mask
 
         with self.maybe_autocast():
@@ -212,4 +295,6 @@ class Blip2OPT(Blip2Base):
             attention_mask=attention_mask
         )
 
-
+    # 지윤 참고: peftmix set addapter 함수
+    def set_adapter(self, adapter_name: str):
+        return self.opt_model.set_adapter(adapter_name)

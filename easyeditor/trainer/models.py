@@ -71,18 +71,44 @@ def get_model(config):
     elif config.model_name == "blip2":
         from .blip2_models.blip2_opt import Blip2OPT
         
-        model = Blip2OPT(
-            vit_model="eva_clip_g",
-            img_size=364,
-            use_grad_checkpoint=True,
-            vit_precision="fp32",
-            freeze_vit=True,
-            freeze_qformer=config.freeze_qformer,
-            opt_model=config.name,
-            state_dict_file=config.state_dict_file,
-            qformer_name_or_path=config.qformer_name_or_path,
-            qformer_checkpoint=config.qformer_checkpoint
-        )
+        if getattr(config, 'use_lora', False): # LoRA 적용된 LLAVA
+            model = Blip2OPT(
+                # ---- LoRA Option
+                use_lora=config.use_lora,
+                lora_r=config.lora_r,
+                lora_alpha=config.lora_alpha,
+                lora_dropout=config.lora_dropout,
+                lora_target_modules=config.lora_target_modules,
+                connector_type=config.lora_connector_type,
+                for_eval=config.for_eval,
+                adapter_path=config.adapter_path,
+                # ---- Baseline Option
+                vit_model="eva_clip_g",
+                img_size=364,
+                use_grad_checkpoint=True,
+                vit_precision="fp32",
+                freeze_vit=True,
+                freeze_qformer=config.freeze_qformer,
+                opt_model=config.name,
+                state_dict_file=config.state_dict_file,
+                qformer_name_or_path=config.qformer_name_or_path,
+                qformer_checkpoint=config.qformer_checkpoint
+            )
+            
+        else: # baseline(Blip2OPT)
+            model = Blip2OPT(
+                # ---- Baseline Option
+                vit_model="eva_clip_g",
+                img_size=364,
+                use_grad_checkpoint=True,
+                vit_precision="fp32",
+                freeze_vit=True,
+                freeze_qformer=config.freeze_qformer,
+                opt_model=config.name,
+                state_dict_file=config.state_dict_file,
+                qformer_name_or_path=config.qformer_name_or_path,
+                qformer_checkpoint=config.qformer_checkpoint
+            )
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
     elif config.model_name == "minigpt4":

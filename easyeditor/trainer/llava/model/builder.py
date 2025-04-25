@@ -1,5 +1,5 @@
 
-## Builder_twolora.py
+## LLAVA -> !LORA! , FT 
 import os
 import warnings
 import shutil
@@ -63,68 +63,18 @@ def load_pretrained_model(
 
     #2) 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
-
-    use_two_lora = True # two lora
+    
     #3) LoRA 적용
     if use_lora:
         from peft import get_peft_model, LoraConfig, TaskType
-
-        mix_lora = True
-        if use_two_lora: # two lora
-            lora_config = LoraConfig(
-                    task_type=TaskType.CAUSAL_LM, # 
-                    r=lora_rank,
-                    lora_alpha=lora_alpha,
-                    lora_dropout=lora_dropout,
-                    target_modules=lora_target_modules
-                )
-            if not mix_lora: # peft        
-                model = get_peft_model(model, lora_config)
-                model.add_adapter(peft_config=lora_config, adapter_name = "visual")
-                model.add_adapter(peft_config=lora_config, adapter_name = "textual")
-                model.delete_adapter("default")
-
-            else: # ★★ PeftMixedmodel 사용: Connector사용시, PeftMixedModel 사용 필수 ★★
-
-                from peft import PeftMixedModel
-                if for_eval: # test(load pretrained weights) | optional: adapter - init from scratch(구현 필요)
-                    model = PeftMixedModel.from_pretrained(model, os.path.join(adapter_path, "visual"), "visual")
-                    model.load_adapter(os.path.join(adapter_path, "textual"), adapter_name="textual")
-                    
-                    if connector_type:
-                        model.load_adapter(os.path.join(adapter_path, "connector"), adapter_name="connector")
-
-
-                else: # train(add new adapter)
-                    model = PeftMixedModel(model, lora_config, adapter_name="visual")
-                    model.add_adapter(peft_config=lora_config, adapter_name="textual")
-
-                    if connector_type: # connector 설정
-                        if connector_type == "ffn":
-                            connector_config = LoraConfig(
-                                task_type=TaskType.CAUSAL_LM,
-                                r=lora_rank,
-                                lora_alpha=16,
-                                lora_dropout=0.1,
-                                target_modules=lora_target_modules
-                            )
-                        elif connector_type == "attention":
-                            connector_config = LoraConfig(
-                                task_type=TaskType.CAUSAL_LM,
-                                r=lora_rank,
-                                lora_alpha=16,
-                                lora_dropout=0.1,
-                                target_modules=["q_proj", "k_proj"]
-                            )
-
-                        model.add_adapter(peft_config=connector_config, adapter_name="connector")
-                        print("-> Connector 장착 완료")
-
-
-
-        else: 
-            model = get_peft_model(model, lora_config)
-
+        lora_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            r=lora_rank,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            target_modules=lora_target_modules
+        )
+        model = get_peft_model(model, lora_config)
         print("-> L O R A 장 착 완 료")
 
     # initialize vision modeles(or Load ViT?)

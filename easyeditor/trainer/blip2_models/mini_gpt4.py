@@ -1,4 +1,4 @@
-import logging
+import logging, os
 import random
 
 import torch
@@ -30,6 +30,16 @@ class MiniGPT4(Blip2Base):
 
     def __init__(
         self,
+        # --- LoRA 옵션
+        use_lora: bool = False,
+        lora_r: int = 8,
+        lora_alpha: int = 32,
+        lora_dropout: float = 0.1,
+        lora_target_modules: list = ["q_proj", "v_proj"],
+        connector_type: Optional[str] = None, 
+        for_eval: Optional[bool] = None,
+        adapter_path: Optional[str] = None,
+        # --- Baseline
         vit_model="eva_clip_g",
         qformer_checkpoint="hugging_cache/blip2_pretrained_flant5xxl.pth",
         img_size=224,
@@ -103,12 +113,92 @@ class MiniGPT4(Blip2Base):
                 load_in_8bit=True,
                 device_map={'': device_8bit}
             )
+            print("Loading LLAMA - 8bit for low resource")
         else:
             self.llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model,
                 torch_dtype=torch.float16,
                 # device_map="auto"
             )
+        
+        # ------------------------------- LoRA --------------------------------
+        use_two_lora = True  # keep parity with Blip2OPT implementation
+        if use_lora:
+            from peft import get_peft_model, LoraConfig, TaskType
+            logging.info("Applying LoRA adapters to LLaMA…")
+            lora_config = LoraConfig(
+                task_type=TaskType.CAUSAL_LM,
+                r=lora_r,
+                lora_alpha=lora_alpha,
+                lora_dropout=lora_dropout,
+                target_modules=list(lora_target_modules),
+            )
+
+            mix_lora = True  # mimic blip2_opt logic
+            if use_two_lora:
+                if not mix_lora:
+                    # simple two‑adapter setup without mixing
+                    self.llama_model = get_peft_model(self.llama_model, lora_config)
+                    self.llama_model.add_adapter(peft_config=lora_config, adapter_name="visual")
+                    self.llama_model.add_adapter(peft_config=lora_config, adapter_name="textual")
+                    self.llama_model.delete_adapter("default")
+                else:
+                    # Use PeftMixedModel to keep separate visual/textual (and optional connector) adapters
+                    from peft import PeftMixedModel
+
+                    if for_eval:
+                        # evaluation: load existing adapter checkpoints
+                        self.llama_model = PeftMixedModel.from_pretrained(
+                            self.llama_model,
+                            os.path.join(adapter_path, "visual"),
+                            "visual",
+                        )
+                        self.llama_model.load_adapter(
+                            os.path.join(adapter_path, "textual"), adapter_name="textual"
+                        )
+                        if connector_type:
+                            self.llama_model.load_adapter(
+                                os.path.join(adapter_path, "connector"), adapter_name="connector"
+                            )
+                    else:
+                        # training: create fresh adapters
+                        self.llama_model = PeftMixedModel(
+                            self.llama_model, lora_config, adapter_name="visual"
+                        )
+                        self.llama_model.add_adapter(
+                            peft_config=lora_config, adapter_name="textual"
+                        )
+                        if connector_type:
+                            if connector_type == "ffn":
+                                connector_config = LoraConfig(
+                                    task_type=TaskType.CAUSAL_LM,
+                                    r=lora_r,
+                                    lora_alpha=16,
+                                    lora_dropout=0.1,
+                                    target_modules=list(lora_target_modules),
+                                )
+                            elif connector_type == "attention":
+                                connector_config = LoraConfig(
+                                    task_type=TaskType.CAUSAL_LM,
+                                    r=lora_r,
+                                    lora_alpha=16,
+                                    lora_dropout=0.1,
+                                    target_modules=["q_proj", "k_proj"],
+                                )
+                            else:
+                                raise ValueError(
+                                    f"Unknown connector_type '{connector_type}'. Choose 'ffn' or 'attention'."
+                                )
+                            self.llama_model.add_adapter(
+                                peft_config=connector_config, adapter_name="connector"
+                            )
+                            logging.info("-> Connector adapter added")
+            else:
+                # single LoRA over whole model
+                self.llama_model = get_peft_model(self.llama_model, lora_config)
+            logging.info("-> (MiniGPT‑4: LoRA adapters ready)")
+        # ------------------------------------------------------------------
+        
 
         # for name, param in self.llama_model.named_parameters():
         #     param.requires_grad = False
@@ -174,8 +264,8 @@ class MiniGPT4(Blip2Base):
                 p_before, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
             p_after_tokens = self.llama_tokenizer(
                 p_after, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
-            p_before_embeds = self.llama_model.model.embed_tokens(p_before_tokens.input_ids).expand(batch_size, -1, -1)
-            p_after_embeds = self.llama_model.model.embed_tokens(p_after_tokens.input_ids).expand(batch_size, -1, -1)
+            p_before_embeds = self.llama_model.get_input_embeddings()(p_before_tokens.input_ids).expand(batch_size, -1, -1)
+            p_after_embeds = self.llama_model.get_input_embeddings()(p_after_tokens.input_ids).expand(batch_size, -1, -1)
             wrapped_img_embeds = torch.cat([p_before_embeds, img_embeds, p_after_embeds], dim=1)
             wrapped_atts_img = atts_img[:, :1].expand(-1, wrapped_img_embeds.shape[1])
             return wrapped_img_embeds, wrapped_atts_img
@@ -230,7 +320,9 @@ class MiniGPT4(Blip2Base):
             # bos_embeds = self.llama_model.model.embed_tokens(bos)
             # atts_bos = atts_img[:, :1]
 
-            to_regress_embeds = self.llama_model.model.embed_tokens(to_regress_tokens.input_ids)
+            # to_regress_embeds = self.llama_model.model.embed_tokens(to_regress_tokens.input_ids) -- vlkeb
+            to_regress_embeds = self.llama_model.get_input_embeddings()(to_regress_tokens.input_ids)
+            
             inputs_embeds = torch.cat([img_embeds, to_regress_embeds], dim=1)
             attention_mask = torch.cat([atts_img, to_regress_tokens["attention_mask"]], dim=1) 
             # inputs_embeds = torch.cat([bos_embeds, img_embeds, to_regress_embeds], dim=1)
@@ -255,7 +347,8 @@ class MiniGPT4(Blip2Base):
                 for i, prompt_len in enumerate(samples['prompts_len']):
                     targets[i, :prompt_len] = -100
                     
-            inputs_embeds = self.llama_model.model.embed_tokens(to_regress_tokens.input_ids)
+            # inputs_embeds = self.llama_model.model.embed_tokens(to_regress_tokens.input_ids) ## - vlkeb
+            inputs_embeds = self.llama_model.get_input_embeddings()(to_regress_tokens.input_ids)  ## - with lora
             attention_mask = to_regress_tokens.attention_mask
 
         with self.maybe_autocast():
@@ -329,10 +422,11 @@ class MiniGPT4(Blip2Base):
         bos = torch.ones([batch_size, 1],
                          dtype=to_regress_tokens.input_ids.dtype,
                          device=to_regress_tokens.input_ids.device) * self.llama_tokenizer.bos_token_id
-        bos_embeds = self.llama_model.model.embed_tokens(bos)
+        #bos_embeds = self.llama_model.model.embed_tokens(bos) -- vlkeb
+        bos_embeds = self.llama_model.get_input_embeddings()(bos) 
         atts_bos = atts_img[:, :1]
-
-        to_regress_embeds = self.llama_model.model.embed_tokens(to_regress_tokens.input_ids)
+        
+        to_regress_embeds = self.llama_model.get_input_embeddings()(to_regress_tokens.input_ids)
         inputs_embeds = torch.cat([bos_embeds, img_embeds, to_regress_embeds], dim=1)
         attention_mask = torch.cat([atts_bos, atts_img, to_regress_tokens.attention_mask], dim=1)
 
@@ -353,3 +447,7 @@ class MiniGPT4(Blip2Base):
         #     output_text = self._lemmatize(output_text)
 
         return output_text
+
+    # Trainer 코드에서 self.model.model.set_adapter(...) 일관성 유지
+    def set_adapter(self, adapter_name_or_list):
+        return self.llama_model.set_adapter(adapter_name_or_list)

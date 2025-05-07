@@ -1,5 +1,3 @@
-
-## LLAVA -> !LORA! , FT 
 import os
 import warnings
 import shutil
@@ -63,21 +61,137 @@ def load_pretrained_model(
 
     #2) 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
-    
+
+    use_two_lora = True # two lora
+    use_trained_adapter = True #  stage 3 - Trained Adapter(True) / init Adapter(False)
     #3) LoRA 적용
     if use_lora:
         from peft import get_peft_model, LoraConfig, TaskType
-        lora_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            r=lora_rank,
-            lora_alpha=lora_alpha,
-            lora_dropout=lora_dropout,
-            target_modules=lora_target_modules
-        )
-        model = get_peft_model(model, lora_config)
+
+        mix_lora = True
+        if use_two_lora: # two lora
+            lora_config = LoraConfig(
+                    task_type=TaskType.CAUSAL_LM, # 
+                    r=lora_rank,
+                    lora_alpha=lora_alpha,
+                    lora_dropout=lora_dropout,
+                    target_modules=lora_target_modules
+                )
+            if not mix_lora: # peft        
+                model = get_peft_model(model, lora_config)
+                model.add_adapter(peft_config=lora_config, adapter_name = "visual")
+                model.add_adapter(peft_config=lora_config, adapter_name = "textual")
+                model.delete_adapter("default")
+
+            else: # ★★ PeftMixedmodel 사용: Connector사용시, PeftMixedModel 사용 필수 ★★
+
+                from peft import PeftMixedModel
+                if for_eval: # test(load pretrained weights) | optional: adapter - init from scratch(구현 필요)
+                    if use_trained_adapter:    
+                        model = PeftMixedModel.from_pretrained(model, os.path.join(adapter_path, "visual"), "visual")
+                        model.load_adapter(os.path.join(adapter_path, "textual"), adapter_name="textual")
+                        print("->Loading vis/tex Knowledge Adapters")
+                    else:
+                        model = PeftMixedModel(model, lora_config, adapter_name="visual")
+                        model.add_adapter(peft_config=lora_config, adapter_name="textual")
+                        print("-> Not loading vis/tex Knowledge Adapters")
+
+                    if connector_type:
+                        model.load_adapter(os.path.join(adapter_path, "connector"), adapter_name="connector")
+
+
+                else: # train(add new adapter)
+                    model = PeftMixedModel(model, lora_config, adapter_name="visual")
+                    model.add_adapter(peft_config=lora_config, adapter_name="textual")
+
+                    if connector_type: # connector 설정
+                        if connector_type == "ffn":
+                            connector_config = LoraConfig(
+                                task_type=TaskType.CAUSAL_LM,
+                                r=lora_rank,
+                                lora_alpha=16,
+                                lora_dropout=0.1,
+                                target_modules=lora_target_modules
+                            )
+                        elif connector_type == "attention":
+                            connector_config = LoraConfig(
+                                task_type=TaskType.CAUSAL_LM,
+                                r=lora_rank,
+                                lora_alpha=16,
+                                lora_dropout=0.1,
+                                target_modules=["q_proj", "k_proj"]
+                            )
+
+                        model.add_adapter(peft_config=connector_config, adapter_name="connector")
+                        print("-> Connector 장착 완료")
+
+
+
+        else:
+            lora_config = LoraConfig(
+                    task_type=TaskType.CAUSAL_LM, # 
+                    r=lora_rank,
+                    lora_alpha=lora_alpha,
+                    lora_dropout=lora_dropout,
+                    target_modules=lora_target_modules
+                )
+            model = get_peft_model(model, lora_config)
+
         print("-> L O R A 장 착 완 료")
 
     # initialize vision modeles(or Load ViT?)
     model_args = ModelVisonArguments()
     model.get_model().initialize_vision_modules(model_args)
+
+    if use_lora:
+        ## Hook for visuzliation Heatmap
+        model.lora_visual_activations = {}
+        def save_lora_visual_activation(name):
+            def hook(module, input, output):
+                model.lora_visual_activations[name] = output.detach().cpu().numpy()
+            return hook
+        num_layers = len(model.base_model.model.model.layers)
+
+        for i in range(num_layers):
+            layer = model.base_model.model.model.layers[i]
+            
+            ## visual adapters - hook
+            if hasattr(layer.mlp.up_proj, "lora_A") and hasattr(layer.mlp.up_proj.lora_A, "visual"):
+                layer.mlp.up_proj.lora_A.visual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.up_proj.lora_A.visual"
+                ))
+            if hasattr(layer.mlp.up_proj, "lora_B") and hasattr(layer.mlp.up_proj.lora_B, "visual"):
+                layer.mlp.up_proj.lora_B.visual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.up_proj.lora_B.visual"
+                ))
+            
+            if hasattr(layer.mlp.down_proj, "lora_A") and hasattr(layer.mlp.down_proj.lora_A, "visual"):
+                layer.mlp.down_proj.lora_A.visual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.down_proj.lora_A.visual"
+                ))
+            if hasattr(layer.mlp.down_proj, "lora_B") and hasattr(layer.mlp.down_proj.lora_B, "visual"):
+                layer.mlp.down_proj.lora_B.visual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.down_proj.lora_B.visual"
+                ))
+        
+            ## textual adapters - hook
+            if hasattr(layer.mlp.up_proj, "lora_A") and hasattr(layer.mlp.up_proj.lora_A, "textual"):
+                    layer.mlp.up_proj.lora_A.textual.register_forward_hook(save_lora_visual_activation(
+                        f"layer{i}.up_proj.lora_A.textual"
+                    ))
+            if hasattr(layer.mlp.up_proj, "lora_B") and hasattr(layer.mlp.up_proj.lora_B, "textual"):
+                layer.mlp.up_proj.lora_B.textual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.up_proj.lora_B.textual"
+                ))
+
+            if hasattr(layer.mlp.down_proj, "lora_A") and hasattr(layer.mlp.down_proj.lora_A, "textual"):
+                layer.mlp.down_proj.lora_A.textual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.down_proj.lora_A.textual"
+                ))
+            if hasattr(layer.mlp.down_proj, "lora_B") and hasattr(layer.mlp.down_proj.lora_B, "textual"):
+                layer.mlp.down_proj.lora_B.textual.register_forward_hook(save_lora_visual_activation(
+                    f"layer{i}.down_proj.lora_B.textual"
+                ))
+    
+
     return model

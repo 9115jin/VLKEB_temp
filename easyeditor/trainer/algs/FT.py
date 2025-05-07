@@ -49,7 +49,7 @@ class FT(EditableModel):
         if 'minigpt4' in self.config.model_name.lower() or 'blip' in self.config.model_name.lower() or 'llava' in self.config.model_name.lower():
             #if self.config.use_lora and self.config.lora_connector_type in ["attention", "ffn"] : # LoRA의 경우, PeftModelForCasualLM -> LLavaLlamaCasualLM으로 래핑을 벗겨내야됨
             if self.config.use_lora:
-                if 'blip' in self.config.model_name.lower():    ## BLIP2-OPT
+                if 'blip' in self.config.model_name.lower() or 'minigpt4' in self.config.model_name.lower():    ## BLIP2-OPT
                     outputs = self.model(*inputs, **kwargs)
                 else:                                           ## LLAVA
                     outputs = self.model.base_model(*inputs, **kwargs)
@@ -144,7 +144,7 @@ class FT(EditableModel):
 
         # # ### -------------------------------- ###
 
-        if  connector_mode: # 코드실수: connector <-> adapter 다르게 설정함;;
+        if  connector_mode: 
             edit_lr = self.config.edit_lr/5
         else:
             edit_lr = self.config.edit_lr
@@ -166,7 +166,7 @@ class FT(EditableModel):
 
                 ### For Edit with LoRA, !Unwrapping! is required ###
                 if self.config.use_lora or self.config.lora_connector_type in ["attention", "ffn"]: 
-                    if 'blip' in self.config.model_name.lower(): # blip2는 여기서..ㅠㅠ
+                    if 'blip' in self.config.model_name.lower() or 'minigpt' in self.config.model_name.lower(): # blip2, minigpt4
                         outputs = self.model(batch)
                     elif 'llava' in self.config.model_name.lower():
                         outputs = self.model.model(batch) # PeftModelForCasualLM -> LlavaLlamaForCausalLM (LoRA: PeftModelForCasualLM) 

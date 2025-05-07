@@ -125,7 +125,16 @@ def get_model(config):
             llama_model=config.name,
             state_dict_file=config.state_dict_file,
             qformer_name_or_path=config.qformer_name_or_path,
-            pretrained_ckpt=config.pretrained_ckpt,
+            pretrained_ckpt=config.pretrained_ckpt,         
+            use_lora=config.use_lora,
+            lora_r=config.lora_r,
+            lora_alpha=config.lora_alpha,
+            lora_dropout=config.lora_dropout,
+            lora_target_modules=config.lora_target_modules,
+            connector_type=config.lora_connector_type,
+            for_eval=config.for_eval,
+            adapter_path=config.adapter_path
+
         )
 
         # for name, param in model.named_parameters():

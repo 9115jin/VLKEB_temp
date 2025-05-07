@@ -600,8 +600,16 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"results/results_sequencial/composition/ft/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        if 'llava' in self.config.model_name.lower():
+            result_dir = f"results/results_sequencial/composition/ft"
+        elif 'blip2' in self.config.model_name.lower() :
+            result_dir = f"results/results_sequencial/blip2/composition/ft"
+        elif 'minigpt4' in self.config.model_name.lower() :
+            result_dir = f"results/results_sequencial/minigpt4/composition/ft"
         
+        results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
+        
+
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
         with open(results_path, "w") as f:
             json.dump(
@@ -1579,12 +1587,6 @@ class MultimodalTrainer(BaseTrainer):
 
 
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
-        if gap_num == 0:
-            try: # lora weight 저장
-                self.model.model.save_pretrained(os.path.join(result_dir, weight))
-                print("LoRA 모델 저장 완료")
-            except:
-                print("LoRA 모델 저장 실패")
 
         with open(results_path, "w") as f:
             json.dump(
@@ -1731,14 +1733,17 @@ class MultimodalTrainer(BaseTrainer):
         ##############################################################################
 
         ################ portability #################
-        # set lora: visual&textual inference
-        if "merge" in edited_model.model.peft_config:
-            edited_model.model.delete_adapter("merge")
+        #### Deprecated ####
+        # if "merge" in edited_model.model.peft_config:
+        #     edited_model.model.delete_adapter("merge")
 
-        weights = [1.0, 1.0]
-        adapter_name = "merge"
-        edited_model.model.add_weighted_adapter(["visual", "textual"], weights, adapter_name, combination_type="cat")
-        edited_model.model.set_adapter("merge")
+        # weights = [1.0, 1.0]
+        # adapter_name = "merge"
+        # edited_model.model.add_weighted_adapter(["visual", "textual"], weights, adapter_name, combination_type="cat")
+        # edited_model.model.set_adapter("merge")
+        
+        # set lora: visual&textual inference
+        edited_model.model.set_adapter(["textual","visual"])
 
         if batch['port'] is not None:
             assert len(batch['port']) == 1, "batch['port'] exist and have only one element"
@@ -2755,7 +2760,8 @@ class MultimodalTrainer(BaseTrainer):
         elif 'blip2' in self.config.model_name.lower() :
             result_dir = f"results/results_sequencial/blip2/composition/base_rag"
 
-        results_path = os.path.join(result_dir,f"")
+        results_path = os.path.join(result_dir,f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
+        
 
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
         with open(results_path, "w") as f:
@@ -3001,10 +3007,11 @@ class MultimodalTrainer(BaseTrainer):
                 stored_base_logits_tex = base_logits_store_tex.pop(0)
 
                 # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
-                info_dict = self.test_sequencial_compositional_two_step(
+                info_dict = self.test_sequencial_rag_with_two_lora_step(
                     stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
                     )
                 averager.add(info_dict)
+                # old: test_sequencial_compositional_two_step 
 
             # logging?
             if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
@@ -3177,13 +3184,17 @@ class MultimodalTrainer(BaseTrainer):
 
         ################ portability #################
         # set lora: visual&textual inference
-        if "merge" in edited_model.model.peft_config:
-            edited_model.model.delete_adapter("merge")
+        #### Deprecated version(not using PEFT) ####
+        # if "merge" in edited_model.model.peft_config:
+        #     edited_model.model.delete_adapter("merge")
 
-        weights = [1.0, 1.0]
-        adapter_name = "merge"
-        edited_model.model.add_weighted_adapter(["visual", "textual"], weights, adapter_name, combination_type="linear") # linear -> cat, dar_linear 추천
-        edited_model.model.set_adapter("merge")
+        # weights = [1.0, 1.0]
+        # adapter_name = "merge"
+        # edited_model.model.add_weighted_adapter(["visual", "textual"], weights, adapter_name, combination_type="linear") # linear -> cat, dar_linear 추천
+        # edited_model.model.set_adapter("merge")
+
+        # set lora: visual&textual inference
+        edited_model.model.set_adapter(["textual","visual"])    
 
         if batch['port'] is not None:
             assert len(batch['port']) == 1, "batch['port'] exist and have only one element"
@@ -5184,7 +5195,7 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"{self.config.adapter_path}/eval/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        results_path = f"{self.config.adapter_path}/eval_wo_trained_weight/100/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
         
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
         with open(results_path, "w") as f:
@@ -5198,6 +5209,236 @@ class MultimodalTrainer(BaseTrainer):
     
 
         ## TEST - compositonal - two
+    
+    def test_sequencial_compositional_connector_eval_50(self, log: bool = False, test_num=200, gap_num=0):
+        from datetime import datetime
+        cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
+        self.model.train(True)
+
+        steps = test_num + gap_num
+        if log:
+            LOG.info(f"Beginning evaluation for {test_num} steps...") # 궁금한게, 200개에 대한 batch
+        averager = RunningStatAverager("val")
+
+        start_time = time.time()
+        ## 저장할 내용
+        val_data_store = []
+
+        # visul-data
+        base_logits_store_vis = []
+        base_image_logits_store_vis = []
+        # textual-data
+        base_logits_store_tex = []
+
+        pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
+        
+        ## 1. Inference Output for test locality(visual & textual 데이터/출력 저장 & 출력)
+        for val_step, batch in enumerate(self.val_loader):
+            if val_step < test_num:
+                # 1.1) visual edit part
+                val_data_store.append(batch) # batch 데이터 저장
+                with torch.no_grad():
+                    base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장 # self.model -> ft
+                    if not isinstance(base_outputs, torch.Tensor):
+                        base_logits = base_outputs.logits
+                    else:  
+                        base_logits = base_outputs
+                    base_logits_store_vis.append(base_logits.clone().detach())
+                        
+                    base_image_outputs = self.model(batch["visual_edit"]["loc_image"]) # I-Loc inference 저장
+                    if not isinstance(base_image_outputs, torch.Tensor):
+                        base_image_logits = base_image_outputs.logits
+                    else:
+                        base_image_logits = base_image_outputs
+                    base_image_logits_store_vis.append(base_image_logits.clone().detach())
+
+                # 1.2) textual edit part
+                with torch.no_grad():
+                    base_outputs = self.model(batch["textual_edit"]["loc"]) # T-Loc inference 저장
+                    if not isinstance(base_outputs, torch.Tensor):
+                        base_logits = base_outputs.logits
+                    else:  
+                        base_logits = base_outputs
+                    base_logits_store_tex.append(base_logits.clone().detach())
+
+                pbar.update(1)
+            else:
+                break
+        pbar.close()
+                                                      
+        ## 2. Model edit & Test ##
+        edited_model = self.model
+        pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
+        for val_step, batch in enumerate(self.val_loader):
+            # 2.1) Model Edit (Update for a batch)
+            # 2.1.1) Visual Edit(first)
+            self.model.model.set_adapter("visual") # PEFT -> set_adapter
+            edited_model, _ = edited_model.edit(batch["visual_edit"]["edit_inner"], mode = "visual" , peft = True)
+
+            # 2.1.2) Textual Edit(second) 
+            self.model.model.set_adapter("textual")  # PEFT -> set_adapter
+            edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
+
+            # 2.2) Test with GAP
+            if val_step >= gap_num: 
+                # 기존 저장했던 batch, t-loc & i-loc-logit 불러옴. For Test
+                stored_batch = val_data_store.pop(0) # vis + text
+                stored_base_logits_vis = base_logits_store_vis.pop(0)
+                stored_base_image_logits_vis = base_image_logits_store_vis.pop(0)
+                stored_base_logits_tex = base_logits_store_tex.pop(0)
+
+                # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
+                info_dict = self.test_sequencial_compositional_connector_eval_step(
+                    stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
+                    )
+                averager.add(info_dict)
+
+            # logging?
+            if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
+                self._inline_seq_log_CompositionalEdit( 
+                    val_step, averager.average(), start_time, steps
+                )
+            pbar.update(1)
+
+            if len(val_data_store) == 0:
+                break
+        pbar.close()
+
+        ## Logging Results ## 
+        if log:
+            self._inline_seq_log_CompositionalEdit(val_step, averager.average(), start_time, steps) ## ★☆★ 수정 필요 ★☆★ ##
+        elapsed = time.time() - start_time
+        stats = averager.average()
+        stats["eval_time/elapsed"] = elapsed
+        stats["eval_time/average"] = elapsed / steps
+
+        results_path = f"{self.config.adapter_path}/eval_50/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        
+        os.makedirs(os.path.dirname(results_path), exist_ok=True)
+        with open(results_path, "w") as f:
+            json.dump(
+                {"results": stats}, f
+            )
+            LOG.info("Wrote results to:")
+            LOG.info(results_path)
+
+        return stats
+    
+    def test_sequencial_compositional_connector_eval_25(self, log: bool = False, test_num=200, gap_num=0):
+        from datetime import datetime
+        cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
+        self.model.train(True)
+
+        steps = test_num + gap_num
+        if log:
+            LOG.info(f"Beginning evaluation for {test_num} steps...") # 궁금한게, 200개에 대한 batch
+        averager = RunningStatAverager("val")
+
+        start_time = time.time()
+        ## 저장할 내용
+        val_data_store = []
+
+        # visul-data
+        base_logits_store_vis = []
+        base_image_logits_store_vis = []
+        # textual-data
+        base_logits_store_tex = []
+
+        pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
+        
+        ## 1. Inference Output for test locality(visual & textual 데이터/출력 저장 & 출력)
+        for val_step, batch in enumerate(self.val_loader):
+            if val_step < test_num:
+                # 1.1) visual edit part
+                val_data_store.append(batch) # batch 데이터 저장
+                with torch.no_grad():
+                    base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장 # self.model -> ft
+                    if not isinstance(base_outputs, torch.Tensor):
+                        base_logits = base_outputs.logits
+                    else:  
+                        base_logits = base_outputs
+                    base_logits_store_vis.append(base_logits.clone().detach())
+                        
+                    base_image_outputs = self.model(batch["visual_edit"]["loc_image"]) # I-Loc inference 저장
+                    if not isinstance(base_image_outputs, torch.Tensor):
+                        base_image_logits = base_image_outputs.logits
+                    else:
+                        base_image_logits = base_image_outputs
+                    base_image_logits_store_vis.append(base_image_logits.clone().detach())
+
+                # 1.2) textual edit part
+                with torch.no_grad():
+                    base_outputs = self.model(batch["textual_edit"]["loc"]) # T-Loc inference 저장
+                    if not isinstance(base_outputs, torch.Tensor):
+                        base_logits = base_outputs.logits
+                    else:  
+                        base_logits = base_outputs
+                    base_logits_store_tex.append(base_logits.clone().detach())
+
+                pbar.update(1)
+            else:
+                break
+        pbar.close()
+                                                      
+        ## 2. Model edit & Test ##
+        edited_model = self.model
+        pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
+        for val_step, batch in enumerate(self.val_loader):
+            # 2.1) Model Edit (Update for a batch)
+            # 2.1.1) Visual Edit(first)
+            self.model.model.set_adapter("visual") # PEFT -> set_adapter
+            edited_model, _ = edited_model.edit(batch["visual_edit"]["edit_inner"], mode = "visual" , peft = True)
+
+            # 2.1.2) Textual Edit(second) 
+            self.model.model.set_adapter("textual")  # PEFT -> set_adapter
+            edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
+
+            # 2.2) Test with GAP
+            if val_step >= gap_num: 
+                # 기존 저장했던 batch, t-loc & i-loc-logit 불러옴. For Test
+                stored_batch = val_data_store.pop(0) # vis + text
+                stored_base_logits_vis = base_logits_store_vis.pop(0)
+                stored_base_image_logits_vis = base_image_logits_store_vis.pop(0)
+                stored_base_logits_tex = base_logits_store_tex.pop(0)
+
+                # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
+                info_dict = self.test_sequencial_compositional_connector_eval_step(
+                    stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
+                    )
+                averager.add(info_dict)
+
+            # logging?
+            if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
+                self._inline_seq_log_CompositionalEdit( 
+                    val_step, averager.average(), start_time, steps
+                )
+            pbar.update(1)
+
+            if len(val_data_store) == 0:
+                break
+        pbar.close()
+
+        ## Logging Results ## 
+        if log:
+            self._inline_seq_log_CompositionalEdit(val_step, averager.average(), start_time, steps) ## ★☆★ 수정 필요 ★☆★ ##
+        elapsed = time.time() - start_time
+        stats = averager.average()
+        stats["eval_time/elapsed"] = elapsed
+        stats["eval_time/average"] = elapsed / steps
+
+        results_path = f"{self.config.adapter_path}/eval_25/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+        
+        os.makedirs(os.path.dirname(results_path), exist_ok=True)
+        with open(results_path, "w") as f:
+            json.dump(
+                {"results": stats}, f
+            )
+            LOG.info("Wrote results to:")
+            LOG.info(results_path)
+
+        return stats
+    
+
     def test_sequencial_compositional_connector_eval_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
         info_dict = {}
         ## edited_model.model.lora_visual_activations
@@ -6219,313 +6460,167 @@ class MultimodalTrainer(BaseTrainer):
         
 
             ## TEST - compositonal - two
-    
-    # def test_sequencial_compositional_connector_attention_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
-    #         info_dict = {}
+    def test_sequencial_compositional_connector_attention_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
+            info_dict = {}
 
-    #         ##############################################################################
-    #         # ----------------------------Test: Visual Edit------------------------------#
-    #         with torch.no_grad():
-    #             # set lora: visual inference
-    #             edited_model.model.set_adapter("visual")
-    #             # inner(Reliability)
-    #             inner_edit_outputs = edited_model(batch["visual_edit"]["edit_inner"])
-    #             inner_batch_labels = batch["visual_edit"]["edit_inner"]["labels"]
-    #             if not isinstance(inner_edit_outputs, torch.Tensor):
-    #                 inner_edit_logits = inner_edit_outputs.logits
-    #             else:
-    #                 inner_edit_logits = inner_edit_outputs
+            ##############################################################################
+            # ----------------------------Test: Visual Edit------------------------------#
+            with torch.no_grad():
+                # set lora: visual inference
+                edited_model.model.set_adapter("visual")
+                # inner(Reliability)
+                inner_edit_outputs = edited_model(batch["visual_edit"]["edit_inner"])
+                inner_batch_labels = batch["visual_edit"]["edit_inner"]["labels"]
+                if not isinstance(inner_edit_outputs, torch.Tensor):
+                    inner_edit_logits = inner_edit_outputs.logits
+                else:
+                    inner_edit_logits = inner_edit_outputs
 
-    #             if inner_edit_logits.shape[1] > inner_batch_labels.shape[1]:
-    #                 inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels) # edit_loss_fn이 어딨지?
-    #             else:
-    #                 inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels[:, -inner_edit_logits.shape[1]-1:])
-    #             del inner_edit_outputs, inner_edit_logits
-    #             torch.cuda.empty_cache()
+                if inner_edit_logits.shape[1] > inner_batch_labels.shape[1]:
+                    inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels) # edit_loss_fn이 어딨지?
+                else:
+                    inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels[:, -inner_edit_logits.shape[1]-1:])
+                del inner_edit_outputs, inner_edit_logits
+                torch.cuda.empty_cache()
 
-    #             # text rephrase(T-Gen)
-    #             post_edit_outputs = edited_model(batch["visual_edit"]["edit_outer"])
-    #             post_batch_labels = batch["visual_edit"]["edit_outer"]["labels"]
-    #             if not isinstance(post_edit_outputs, torch.Tensor):
-    #                 post_edit_logits = post_edit_outputs.logits
-    #             else:
-    #                 post_edit_logits = post_edit_outputs
+                # text rephrase(T-Gen)
+                post_edit_outputs = edited_model(batch["visual_edit"]["edit_outer"])
+                post_batch_labels = batch["visual_edit"]["edit_outer"]["labels"]
+                if not isinstance(post_edit_outputs, torch.Tensor):
+                    post_edit_logits = post_edit_outputs.logits
+                else:
+                    post_edit_logits = post_edit_outputs
                 
-    #             if post_edit_logits.shape[1] > post_batch_labels.shape[1]:
-    #                 post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels) # edit_loss_fn -> vis, text 한번에 적용해도 되는가
-    #             else:
-    #                 post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels[:, -post_edit_logits.shape[1]-1:])
-    #             del post_edit_outputs, post_edit_logits
-    #             torch.cuda.empty_cache()
+                if post_edit_logits.shape[1] > post_batch_labels.shape[1]:
+                    post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels) # edit_loss_fn -> vis, text 한번에 적용해도 되는가
+                else:
+                    post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels[:, -post_edit_logits.shape[1]-1:])
+                del post_edit_outputs, post_edit_logits
+                torch.cuda.empty_cache()
 
-    #             # image rephrase(I-Gen)
-    #             post_image_edit_outputs = edited_model(batch["visual_edit"]["edit_outer_image"])
-    #             post_image_batch_labels = batch["visual_edit"]["edit_outer_image"]["labels"]
-    #             if not isinstance(post_image_edit_outputs, torch.Tensor):
-    #                 post_image_edit_logits = post_image_edit_outputs.logits
-    #             else:
-    #                 post_image_edit_logits = post_image_edit_outputs
+                # image rephrase(I-Gen)
+                post_image_edit_outputs = edited_model(batch["visual_edit"]["edit_outer_image"])
+                post_image_batch_labels = batch["visual_edit"]["edit_outer_image"]["labels"]
+                if not isinstance(post_image_edit_outputs, torch.Tensor):
+                    post_image_edit_logits = post_image_edit_outputs.logits
+                else:
+                    post_image_edit_logits = post_image_edit_outputs
 
-    #             if post_image_edit_logits.shape[1] > post_image_batch_labels.shape[1]:    
-    #                 image_rephrase_edit_dict = self.model.edit_loss_fn(self.config, post_image_edit_logits, post_image_batch_labels)
-    #             else:
-    #                 image_rephrase_edit_dict = self.model.edit_loss_fn(self.config, post_image_edit_logits, post_image_batch_labels[:, -post_image_edit_logits.shape[1]-1:])
-    #             del post_image_edit_outputs, post_image_edit_logits
-    #             torch.cuda.empty_cache()
+                if post_image_edit_logits.shape[1] > post_image_batch_labels.shape[1]:    
+                    image_rephrase_edit_dict = self.model.edit_loss_fn(self.config, post_image_edit_logits, post_image_batch_labels)
+                else:
+                    image_rephrase_edit_dict = self.model.edit_loss_fn(self.config, post_image_edit_logits, post_image_batch_labels[:, -post_image_edit_logits.shape[1]-1:])
+                del post_image_edit_outputs, post_image_edit_logits
+                torch.cuda.empty_cache()
 
-    #             # text loc(T-Loc)
-    #             post_base_outputs = edited_model(batch["visual_edit"]["loc"])
-    #             if not isinstance(post_base_outputs, torch.Tensor):
-    #                 post_base_logits = post_base_outputs.logits
-    #             else:
-    #                 post_base_logits = post_base_outputs
-    #             post_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_base_logits, dim=-1), k=1, dim=-1).indices
-    #             base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_logits_vis, dim=-1), k=1, dim=-1).indices
-    #             del post_base_outputs, post_base_logits
-    #             torch.cuda.empty_cache()
+                # text loc(T-Loc)
+                post_base_outputs = edited_model(batch["visual_edit"]["loc"])
+                if not isinstance(post_base_outputs, torch.Tensor):
+                    post_base_logits = post_base_outputs.logits
+                else:
+                    post_base_logits = post_base_outputs
+                post_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_base_logits, dim=-1), k=1, dim=-1).indices
+                base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_logits_vis, dim=-1), k=1, dim=-1).indices
+                del post_base_outputs, post_base_logits
+                torch.cuda.empty_cache()
 
-    #             # image loc(I-Loc)
-    #             post_image_base_outputs = edited_model(batch["visual_edit"]["loc_image"])
-    #             if not isinstance(post_image_base_outputs, torch.Tensor):
-    #                 post_image_base_logits = post_image_base_outputs.logits
-    #             else:
-    #                 post_image_base_logits = post_image_base_outputs
-    #             post_image_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_image_base_logits, dim=-1), k=10, dim=-1).indices
-    #             base_image_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_image_logits_vis, dim=-1), k=10, dim=-1).indices
-    #             del post_image_base_outputs, post_image_base_logits
-    #             torch.cuda.empty_cache()
+                # image loc(I-Loc)
+                post_image_base_outputs = edited_model(batch["visual_edit"]["loc_image"])
+                if not isinstance(post_image_base_outputs, torch.Tensor):
+                    post_image_base_logits = post_image_base_outputs.logits
+                else:
+                    post_image_base_logits = post_image_base_outputs
+                post_image_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_image_base_logits, dim=-1), k=10, dim=-1).indices
+                base_image_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_image_logits_vis, dim=-1), k=10, dim=-1).indices
+                del post_image_base_outputs, post_image_base_logits
+                torch.cuda.empty_cache()
 
-    #         info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
-    #         info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
-    #         info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
-    #         info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
-    #         info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
-    #         ##############################################################################
+            info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
+            info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
+            info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
+            info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
+            info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
+            ##############################################################################
 
-    #         ##############################################################################
-    #         # ----------------------------Test: Textual Edit------------------------------#
-    #         with torch.no_grad():
-    #             # set lora: visual inference
-    #             edited_model.model.set_adapter("textual")
-    #             # inner(Reliability)
-    #             inner_edit_outputs = edited_model(batch["textual_edit"]["edit_inner"])
-    #             inner_batch_labels = batch["textual_edit"]["edit_inner"]["labels"]
-    #             if not isinstance(inner_edit_outputs, torch.Tensor):
-    #                 inner_edit_logits = inner_edit_outputs.logits
-    #             else:
-    #                 inner_edit_logits = inner_edit_outputs
+            ##############################################################################
+            # ----------------------------Test: Textual Edit------------------------------#
+            with torch.no_grad():
+                # set lora: visual inference
+                edited_model.model.set_adapter("textual")
+                # inner(Reliability)
+                inner_edit_outputs = edited_model(batch["textual_edit"]["edit_inner"])
+                inner_batch_labels = batch["textual_edit"]["edit_inner"]["labels"]
+                if not isinstance(inner_edit_outputs, torch.Tensor):
+                    inner_edit_logits = inner_edit_outputs.logits
+                else:
+                    inner_edit_logits = inner_edit_outputs
 
-    #             if inner_edit_logits.shape[1] > inner_batch_labels.shape[1]:
-    #                 inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels)
-    #             else:
-    #                 inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels[:, -inner_edit_logits.shape[1]-1:])
-    #             del inner_edit_outputs, inner_edit_logits
-    #             torch.cuda.empty_cache()
+                if inner_edit_logits.shape[1] > inner_batch_labels.shape[1]:
+                    inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels)
+                else:
+                    inner_edit_dict = self.model.edit_loss_fn(self.config, inner_edit_logits, inner_batch_labels[:, -inner_edit_logits.shape[1]-1:])
+                del inner_edit_outputs, inner_edit_logits
+                torch.cuda.empty_cache()
 
-    #             # text rephrase(Generality)
-    #             post_edit_outputs = edited_model(batch["textual_edit"]["edit_outer"])
-    #             post_batch_labels = batch["textual_edit"]["edit_outer"]["labels"]
-    #             if not isinstance(post_edit_outputs, torch.Tensor):
-    #                 post_edit_logits = post_edit_outputs.logits
-    #             else:
-    #                 post_edit_logits = post_edit_outputs
+                # text rephrase(Generality)
+                post_edit_outputs = edited_model(batch["textual_edit"]["edit_outer"])
+                post_batch_labels = batch["textual_edit"]["edit_outer"]["labels"]
+                if not isinstance(post_edit_outputs, torch.Tensor):
+                    post_edit_logits = post_edit_outputs.logits
+                else:
+                    post_edit_logits = post_edit_outputs
                 
-    #             if post_edit_logits.shape[1] > post_batch_labels.shape[1]:
-    #                 post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels)
-    #             else:
-    #                 post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels[:, -post_edit_logits.shape[1]-1:])
-    #             del post_edit_outputs, post_edit_logits
-    #             torch.cuda.empty_cache()
+                if post_edit_logits.shape[1] > post_batch_labels.shape[1]:
+                    post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels)
+                else:
+                    post_edit_dict = self.model.edit_loss_fn(self.config, post_edit_logits, post_batch_labels[:, -post_edit_logits.shape[1]-1:])
+                del post_edit_outputs, post_edit_logits
+                torch.cuda.empty_cache()
 
-    #             # text loc(Locality)
-    #             post_base_outputs = edited_model(batch["textual_edit"]["loc"])
-    #             if not isinstance(post_base_outputs, torch.Tensor):
-    #                 post_base_logits = post_base_outputs.logits
-    #             else:
-    #                 post_base_logits = post_base_outputs
-    #             post_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_base_logits, dim=-1), k=1, dim=-1).indices
-    #             base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_logits_tex, dim=-1), k=1, dim=-1).indices
-    #             del post_base_outputs, post_base_logits
-    #             torch.cuda.empty_cache()
+                # text loc(Locality)
+                post_base_outputs = edited_model(batch["textual_edit"]["loc"])
+                if not isinstance(post_base_outputs, torch.Tensor):
+                    post_base_logits = post_base_outputs.logits
+                else:
+                    post_base_logits = post_base_outputs
+                post_base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(post_base_logits, dim=-1), k=1, dim=-1).indices
+                base_logits_softmax_top_k = torch.topk(torch.nn.functional.softmax(base_logits_tex, dim=-1), k=1, dim=-1).indices
+                del post_base_outputs, post_base_logits
+                torch.cuda.empty_cache()
 
-    #         info_dict['text/inner/acc'] = inner_edit_dict["acc"].item()
-    #         info_dict['text/edit/acc'] = post_edit_dict["acc"].item()
-    #         info_dict["text/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
-    #                 ##############################################################################
+            info_dict['text/inner/acc'] = inner_edit_dict["acc"].item()
+            info_dict['text/edit/acc'] = post_edit_dict["acc"].item()
+            info_dict["text/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
+            ##############################################################################
 
-    #                 ################ portability #################
-    #                 # set lora: visual&textual inference
-    #                 edited_model.model.set_adapter(["textual","visual","connector"])
+            ################ portability #################
+            # set lora: visual&textual inference
+            edited_model.model.set_adapter(["textual","visual","connector"])
 
-    #                 if batch['port'] is not None:
-    #                     assert len(batch['port']) == 1, "batch['port'] exist and have only one element"
-    #                     port = batch['port'][0]
-    #                     with torch.no_grad():
-    #                         port_outputs = edited_model(port)
-    #                         port_labels = port["labels"]
-    #                         if not isinstance(port_outputs, torch.Tensor):
-    #                             port_logits = port_outputs.logits
-    #                         else:
-    #                             port_logits = port_outputs
-    #                         if port_logits.shape[1] > port_labels.shape[1]:
-    #                             port_dict = self.model.edit_loss_fn(self.config, port_logits, port_labels)
-    #                         else:
-    #                             port_dict = self.model.edit_loss_fn(self.config, port_logits, port_labels[:, -port_logits.shape[1]-1:])
-    #                         port_acc = port_dict["acc"].item()
-    #                         del port_outputs, port_logits
-    #                         torch.cuda.empty_cache()
+            if batch['port'] is not None:
+                assert len(batch['port']) == 1, "batch['port'] exist and have only one element"
+                port = batch['port'][0]
+                with torch.no_grad():
+                    port_outputs = edited_model(port)
+                    port_labels = port["labels"]
+                    if not isinstance(port_outputs, torch.Tensor):
+                        port_logits = port_outputs.logits
+                    else:
+                        port_logits = port_outputs
+                    if port_logits.shape[1] > port_labels.shape[1]:
+                        port_dict = self.model.edit_loss_fn(self.config, port_logits, port_labels)
+                    else:
+                        port_dict = self.model.edit_loss_fn(self.config, port_logits, port_labels[:, -port_logits.shape[1]-1:])
+                    port_acc = port_dict["acc"].item()
+                    del port_outputs, port_logits
+                    torch.cuda.empty_cache()
 
-    #                     info_dict['port/acc'] = port_acc
-    #                     ################ portability #################
+                info_dict['port/acc'] = port_acc
+                ################ portability #################
 
-    #                 return info_dict
-
-    #             # TEST - compositonal - two lora + Connector(att) + rag
-    #             def test_sequencial_compositional_connector_attention_rag(self, log: bool = False, test_num=200, gap_num=0):
-    #                 from datetime import datetime
-    #                 cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
-    #                 self.model.train(True)
-
-    #                 steps = test_num + gap_num
-    #                 if log:
-    #                     LOG.info(f"Beginning evaluation for {test_num} steps...") # 궁금한게, 200개에 대한 batch
-    #                 averager = RunningStatAverager("val")
-
-    #                 start_time = time.time()
-    #                 ## 저장할 내용
-    #                 val_data_store = []
-
-    #                 # visul-data
-    #                 base_logits_store_vis = []
-    #                 base_image_logits_store_vis = []
-    #                 # textual-data
-    #                 base_logits_store_tex = []
-
-    #                 pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
-                    
-    #                 ## 1. Inference Output for test locality(visual & textual 데이터/출력 저장 & 출력)
-    #                 for val_step, batch in enumerate(self.val_loader):
-    #                     if val_step < test_num:
-    #                         # 1.1) visual edit part
-    #                         val_data_store.append(batch) # batch 데이터 저장
-    #                         with torch.no_grad():
-    #                             base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장 # self.model -> ft
-    #                             if not isinstance(base_outputs, torch.Tensor):
-    #                                 base_logits = base_outputs.logits
-    #                             else:  
-    #                                 base_logits = base_outputs
-    #                             base_logits_store_vis.append(base_logits.clone().detach())
-                                    
-    #                             base_image_outputs = self.model(batch["visual_edit"]["loc_image"]) # I-Loc inference 저장
-    #                             if not isinstance(base_image_outputs, torch.Tensor):
-    #                                 base_image_logits = base_image_outputs.logits
-    #                             else:
-    #                                 base_image_logits = base_image_outputs
-    #                             base_image_logits_store_vis.append(base_image_logits.clone().detach())
-
-    #                         # 1.2) textual edit part
-    #                         with torch.no_grad():
-    #                             base_outputs = self.model(batch["textual_edit"]["loc"]) # T-Loc inference 저장
-    #                             if not isinstance(base_outputs, torch.Tensor):
-    #                                 base_logits = base_outputs.logits
-    #                             else:  
-    #                                 base_logits = base_outputs
-    #                             base_logits_store_tex.append(base_logits.clone().detach())
-
-    #                         pbar.update(1)
-    #                     else:
-    #                         break
-    #                 pbar.close()
-
-    #                 ## 2. Model edit & Test ##
-    #                 edited_model = self.model
-    #                 pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
-    #                 for val_step, batch in enumerate(self.val_loader):
-    #                     # 2.1) Model Edit (Update for a batch)
-    #                     # 2.1.1) Visual Edit(first)
-    #                     self.model.model.set_adapter("visual") # PEFT -> set_adapter
-    #                     edited_model, _ = edited_model.edit(batch["visual_edit"]["edit_inner"], mode = "visual" , peft = True)
-
-    #                     # 2.1.2) Textual Edit(second) 
-    #                     self.model.model.set_adapter("textual")  # PEFT -> set_adapter
-    #                     edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
-
-    #                     # 2.1.3) Compositional Edit(second) ★ mlp 학습 o
-    #                     if val_step > 5:
-    #                         edited_model.model.set_adapter(["textual","visual","connector"])
-    #                         edited_model, _ = edited_model.edit(batch["port"][0], connector_mode=True) # cond? 이거 안되나
-
-
-    #                     # 2.2) Test with GAP
-    #                     if val_step >= gap_num: 
-    #                         # 기존 저장했던 batch, t-loc & i-loc-logit 불러옴. For Test
-    #                         stored_batch = val_data_store.pop(0) # vis + text
-    #                         stored_base_logits_vis = base_logits_store_vis.pop(0)
-    #                         stored_base_image_logits_vis = base_image_logits_store_vis.pop(0)
-    #                         stored_base_logits_tex = base_logits_store_tex.pop(0)
-
-    #                         # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
-    #                         info_dict = self.test_sequencial_compositional_connector_attention_rag_step(
-    #                             stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
-    #                             )
-    #                         averager.add(info_dict)
-
-    #                     # logging?
-    #                     if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
-    #                         self._inline_seq_log_CompositionalEdit( ## ★☆★ 수정 필요 ★☆★ ##
-    #                             val_step, averager.average(), start_time, steps
-    #                         )
-    #                     pbar.update(1)
-
-    #                     if len(val_data_store) == 0:
-    #                         break
-    #                 pbar.close()
-
-    #         ## Logging Results ## 
-    #         if log:
-    #             self._inline_seq_log_CompositionalEdit(val_step, averager.average(), start_time, steps) ## ★☆★ 수정 필요 ★☆★ ##
-    #         elapsed = time.time() - start_time
-    #         stats = averager.average()
-    #         stats["eval_time/elapsed"] = elapsed
-    #         stats["eval_time/average"] = elapsed / steps
-
-    #         results_path = f"results/results_sequencial/composition/two_lora_connect_attention_rag/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
-            
-    #         os.makedirs(os.path.dirname(results_path), exist_ok=True)
-    #         if gap_num == 0:
-    #             try: # lora weight 저장
-    #                 from peft import LoraConfig, TaskType, get_peft_model, PeftConfig, PeftModel
-    #                 connector_config = LoraConfig(
-    #                         task_type=TaskType.CAUSAL_LM,
-    #                         r=8,
-    #                         lora_alpha=16,
-    #                         lora_dropout=0.05,
-    #                         target_modules=["q_proj", "k_proj"]
-    #                     )
-                    
-    #                 peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
-    #                 peft_model.delete_adapter("default")
-    #                 peft_model = peft_model.cpu()
-    #                 peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_attention_rag")
-    #                 # 저장 후 메모리 해제
-    #                 del peft_model
-
-    #                 torch.cuda.empty_cache()
-    #                 print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_attention_rag\" ")
-    #             except:
-    #                 print("LoRA, MLP 모델 저장 실패")
-
-    #         with open(results_path, "w") as f:
-    #             json.dump(
-    #                 {"results": stats}, f
-    #             )
-    #             LOG.info("Wrote results to:")
-    #             LOG.info(results_path)
-
-    #         return stats
+            return info_dict
 
     #     ## TEST - compositonal - two
-    
     def test_sequencial_compositional_connector_attention_rag_70(self, log: bool = False, test_num=200, gap_num=0):
         from datetime import datetime
         cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
@@ -6634,7 +6729,15 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/elapsed"] = elapsed
         stats["eval_time/average"] = elapsed / steps
 
-        results_path = f"results/results_sequencial/composition/two_lora_connect_attention_rag_70/{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json"
+
+        if 'llava' in self.config.model_name.lower():
+            result_dir = f"results/results_sequencial/composition/two_lora_connect_attention_rag_70"
+        elif 'blip2' in self.config.model_name.lower() :
+            result_dir = f"results/results_sequencial/blip2/composition/two_lora_connect_attention_rag_70"
+        elif 'minigpt4' in self.config.model_name.lower() :
+            result_dir = f"results/results_sequencial/minigpt4/composition/two_lora_connect_attention_rag_70"
+        
+        results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
         
         os.makedirs(os.path.dirname(results_path), exist_ok=True)
         if gap_num == 0:
@@ -6648,17 +6751,24 @@ class MultimodalTrainer(BaseTrainer):
                         target_modules=["q_proj", "k_proj"]
                     )
                 
-                peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
+                
+                # blip이면
+                if 'llava' in self.config.model_name.lower() :
+                    peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
+
+                elif 'blip2' in self.config.model_name.lower() :
+                    peft_model = get_peft_model(self.model.model.opt_model.model, connector_config)
+
                 peft_model.delete_adapter("default")
                 peft_model = peft_model.cpu()
-                peft_model.save_pretrained("results/results_sequencial/composition/two_lora_connect_attention_rag_70")
+                peft_model.save_pretrained(result_dir)
                 # 저장 후 메모리 해제
                 del peft_model
 
                 torch.cuda.empty_cache()
-                print("LoRA + (gap0, train_composition.json) 모델 저장 완료 -> \"results/results_sequencial/composition/two_lora_connect_attention_rag_70\" ")
+                print("LoRA + Connector 모델 저장 완료(Gap 0 with train_compositional_edit.json) ->", result_dir)
             except:
-                print("LoRA, MLP 모델 저장 실패")
+                print("LoRA + Connector 모델 저장 실패")
 
         with open(results_path, "w") as f:
             json.dump(
@@ -6740,7 +6850,7 @@ class MultimodalTrainer(BaseTrainer):
             self.model.model.set_adapter("textual")  # PEFT -> set_adapter
             edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
 
-            # 2.1.3) Compositional Edit(second) ★ mlp 학습 o
+            # 2.1.3) Compositional Edit(second) 
             if val_step > 5:
                 edited_model.model.set_adapter(["textual","visual","connector"])
                 edited_model, _ = edited_model.edit(batch["port"][0], connector_mode=True) 
@@ -6783,6 +6893,8 @@ class MultimodalTrainer(BaseTrainer):
             result_dir = f"results/results_sequencial/composition/two_lora_connect_attention_rag_50"
         elif 'blip2' in self.config.model_name.lower() :
             result_dir = f"results/results_sequencial/blip2/composition/two_lora_connect_attention_rag_50"
+        elif 'minigpt4' in self.config.model_name.lower() :
+            result_dir = f"results/results_sequencial/minigpt4/composition/two_lora_connect_attention_rag_50"
         
         results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
         
@@ -6806,6 +6918,9 @@ class MultimodalTrainer(BaseTrainer):
                 elif 'blip2' in self.config.model_name.lower() :
                     peft_model = get_peft_model(self.model.model.opt_model.model, connector_config)
 
+                elif 'minigpt4' in self.config.model_name.lower() :
+                    peft_model = get_peft_model(self.model.model.llama_model.model, connector_config)
+
                 peft_model.delete_adapter("default")
                 peft_model = peft_model.cpu()
                 peft_model.save_pretrained(result_dir)
@@ -6826,166 +6941,7 @@ class MultimodalTrainer(BaseTrainer):
 
         return stats
     
-
-        ## TEST - compositonal - two      
-    # def test_sequencial_compositional_connector_attention_rag_70(self, log: bool = False, test_num=200, gap_num=0):
-    #     from datetime import datetime
-    #     cur_time = datetime.now().strftime("%y%m%d_%H%M%S")
-    #     self.model.train(True) # LLAVA:? / BLIP2: FT
-
-    #     steps = test_num + gap_num
-    #     if log:
-    #         LOG.info(f"Beginning evaluation for {test_num} steps...") # 궁금한게, 200개에 대한 batch
-    #     averager = RunningStatAverager("val")
-
-    #     start_time = time.time()
-    #     ## 저장할 내용
-    #     val_data_store = []
-
-    #     # visul-data
-    #     base_logits_store_vis = []
-    #     base_image_logits_store_vis = []
-    #     # textual-data
-    #     base_logits_store_tex = []
-
-    #     pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
-        
-    #     ## 1. Inference Output for test locality(visual & textual 데이터/출력 저장 & 출력)
-    #     for val_step, batch in enumerate(self.val_loader):
-    #         if val_step < test_num:
-    #             # 1.1) visual edit part
-    #             val_data_store.append(batch) # batch 데이터 저장
-    #             with torch.no_grad():
-    #                 base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장 # self.model -> ft
-    #                 if not isinstance(base_outputs, torch.Tensor):
-    #                     base_logits = base_outputs.logits
-    #                 else:  
-    #                     base_logits = base_outputs
-    #                 base_logits_store_vis.append(base_logits.clone().detach())
-                        
-    #                 base_image_outputs = self.model(batch["visual_edit"]["loc_image"]) # I-Loc inference 저장
-    #                 if not isinstance(base_image_outputs, torch.Tensor):
-    #                     base_image_logits = base_image_outputs.logits
-    #                 else:
-    #                     base_image_logits = base_image_outputs
-    #                 base_image_logits_store_vis.append(base_image_logits.clone().detach())
-
-    #             # 1.2) textual edit part
-    #             with torch.no_grad():
-    #                 base_outputs = self.model(batch["textual_edit"]["loc"]) # T-Loc inference 저장
-    #                 if not isinstance(base_outputs, torch.Tensor):
-    #                     base_logits = base_outputs.logits
-    #                 else:  
-    #                     base_logits = base_outputs
-    #                 base_logits_store_tex.append(base_logits.clone().detach())
-
-    #             pbar.update(1)
-    #         else:
-    #             break
-    #     pbar.close()
-
-    #     ## 2. Model edit & Test ##
-    #     edited_model = self.model
-    #     pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
-    #     for val_step, batch in enumerate(self.val_loader):
-    #         # 2.1) Model Edit (Update for a batch)
-    #         # 2.1.1) Visual Edit(first)
-    #         self.model.model.set_adapter("visual") # PEFT -> set_adapter
-    #         edited_model, _ = edited_model.edit(batch["visual_edit"]["edit_inner"], mode = "visual" , peft = True)
-
-    #         # 2.1.2) Textual Edit(second) 
-    #         self.model.model.set_adapter("textual")  # PEFT -> set_adapter
-    #         edited_model, _ = edited_model.edit(batch["textual_edit"]["edit_inner"], mode = "textual" , peft = True)
-
-    #         # 2.1.3) Compositional Edit(second) ★ mlp 학습 o
-    #         if val_step > 5:
-    #             edited_model.model.set_adapter(["textual","visual","connector"])
-    #             edited_model, _ = edited_model.edit(batch["port"][0], connector_mode=True) 
-
-
-    #         # 2.2) Test with GAP
-    #         if val_step >= gap_num: 
-    #             # 기존 저장했던 batch, t-loc & i-loc-logit 불러옴. For Test
-    #             stored_batch = val_data_store.pop(0) # vis + text
-    #             stored_base_logits_vis = base_logits_store_vis.pop(0)
-    #             stored_base_image_logits_vis = base_image_logits_store_vis.pop(0)
-    #             stored_base_logits_tex = base_logits_store_tex.pop(0)
-
-    #             # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
-    #             info_dict = self.test_sequencial_compositional_connector_attention_rag_step(
-    #                 stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
-    #                 )
-    #             averager.add(info_dict)
-
-    #         # logging?
-    #         if (log and val_step >= gap_num and (val_step) % self.config.log_interval == 0):
-    #             self._inline_seq_log_CompositionalEdit( ## ★☆★ 수정 필요 ★☆★ ##
-    #                 val_step, averager.average(), start_time, steps
-    #             )
-    #         pbar.update(1)
-
-    #         if len(val_data_store) == 0:
-    #             break
-    #     pbar.close()
-
-    #     ## Logging Results ## 
-    #     if log:
-    #         self._inline_seq_log_CompositionalEdit(val_step, averager.average(), start_time, steps) ## ★☆★ 수정 필요 ★☆★ ##
-    #     elapsed = time.time() - start_time
-    #     stats = averager.average()
-    #     stats["eval_time/elapsed"] = elapsed
-    #     stats["eval_time/average"] = elapsed / steps
-
-    #     if 'llava' in self.config.model_name.lower():
-    #         result_dir = f"results/results_sequencial/composition/two_lora_connect_attention_rag_70"
-    #     elif 'blip2' in self.config.model_name.lower() :
-    #         result_dir = f"results/results_sequencial/blip2/composition/two_lora_connect_attention_rag_70"
-        
-    #     results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
-        
-    #     os.makedirs(os.path.dirname(results_path), exist_ok=True)
-    #     if gap_num == 0:
-    #         try: # lora weight 저장
-    #             from peft import LoraConfig, TaskType, get_peft_model, PeftConfig, PeftModel
-    #             connector_config = LoraConfig(
-    #                     task_type=TaskType.CAUSAL_LM,
-    #                     r=8,
-    #                     lora_alpha=16,
-    #                     lora_dropout=0.05,
-    #                     target_modules=["q_proj", "k_proj"]
-    #                 )
-                
-                
-    #             # blip이면
-    #             if 'llava' in self.config.model_name.lower() :
-    #                 peft_model = get_peft_model(self.model.model.base_model.model, connector_config)
-
-    #             elif 'blip2' in self.config.model_name.lower() :
-    #                 peft_model = get_peft_model(self.model.model.opt_model.model, connector_config)
-
-    #             peft_model.delete_adapter("default")
-    #             peft_model = peft_model.cpu()
-    #             peft_model.save_pretrained(result_dir)
-    #             # 저장 후 메모리 해제
-    #             del peft_model
-
-    #             torch.cuda.empty_cache()
-    #             print("LoRA + Connector 모델 저장 완료(Gap 0 with train_compositional_edit.json) ->", result_dir)
-    #         except:
-    #             print("LoRA + Connector 모델 저장 실패")
-
-    #     with open(results_path, "w") as f:
-    #         json.dump(
-    #             {"results": stats}, f
-    #         )
-    #         LOG.info("Wrote results to:")
-    #         LOG.info(results_path)
-
-    #     return stats
-    
-
     #     ## TEST - compositonal - two      
-       
     def test_sequencial_compositional_connector_attention_rag_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
         info_dict = {}
 

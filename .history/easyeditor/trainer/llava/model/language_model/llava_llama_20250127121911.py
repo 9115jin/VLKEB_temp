@@ -67,9 +67,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
     
     def prepare_inputs_from_batch(self, samples):
         text = [t for t in samples["text_input"]]
-        # Use tokenizer_name from config if available, fallback to default
-        tokenizer_name = getattr(self.config, 'tokenizer_name', 'hugging_cache/llava-v1.5-7b')
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=False)
+        tokenizer = AutoTokenizer.from_pretrained('hugging_cache/llava-v1.5-7b', use_fast=False)
 
         input_tokens = tokenizer(text, padding=True, return_tensors='pt').to(self.device)
         input_ids = input_tokens.input_ids

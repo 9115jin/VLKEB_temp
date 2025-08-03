@@ -46,10 +46,6 @@ class LlavaMetaModel:
         pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
 
         self.config.mm_vision_tower = vision_tower
-        
-        # Store tokenizer_name from model_args
-        if hasattr(model_args, 'tokenizer_name'):
-            self.config.tokenizer_name = model_args.tokenizer_name
 
         if self.get_vision_tower() is None:
             vision_tower = build_vision_tower(model_args)

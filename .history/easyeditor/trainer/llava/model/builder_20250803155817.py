@@ -63,12 +63,7 @@ def load_pretrained_model(
     #2) 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
-    print(lora_rank)
-    if lora_rank == 16:
-        use_two_lora = False # One lora
-    else:
-        use_two_lora = True # Two lora
-    
+    use_two_lora = True # two lora
     use_trained_adapter = True #  stage 3 - Trained Adapter(True) / init Adapter(False)
     #3) LoRA 적용
     if use_lora:
@@ -76,7 +71,6 @@ def load_pretrained_model(
 
         mix_lora = True
         if use_two_lora: # two lora
-            print("-> WE USE TWO LORA")
             lora_config = LoraConfig(
                     task_type=TaskType.CAUSAL_LM, # 
                     r=lora_rank,

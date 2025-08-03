@@ -140,7 +140,6 @@ def get_model(config):
         # for name, param in model.named_parameters():
         #     print(f"{name}: {param.shape}")
     elif config.model_name == "llava": ## LLAVA 모델은 여기서 ## 
-        print("LLLLLLLLLLLLLLLLAAAAAAAAAAVVVVVVVVAAAAAAAAAAA")
         # 모델 로드
         from .llava.model.builder import load_pretrained_model
         if getattr(config, 'use_lora', False): # LoRA 적용된 LLAVA

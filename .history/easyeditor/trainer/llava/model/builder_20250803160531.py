@@ -26,7 +26,7 @@ def load_pretrained_model(
     device_map="auto",
     device="cuda",
     use_lora=False,
-    lora_rank=8,
+    lora_r=8,
     lora_alpha=32,
     lora_dropout=0.1,
     lora_target_modules=["down_proj", "up_proj"],

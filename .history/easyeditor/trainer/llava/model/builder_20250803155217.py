@@ -63,12 +63,7 @@ def load_pretrained_model(
     #2) 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
-    print(lora_rank)
-    if lora_rank == 16:
-        use_two_lora = False # One lora
-    else:
-        use_two_lora = True # Two lora
-    
+    use_two_lora = True # two lora
     use_trained_adapter = True #  stage 3 - Trained Adapter(True) / init Adapter(False)
     #3) LoRA 적용
     if use_lora:
@@ -76,7 +71,6 @@ def load_pretrained_model(
 
         mix_lora = True
         if use_two_lora: # two lora
-            print("-> WE USE TWO LORA")
             lora_config = LoraConfig(
                     task_type=TaskType.CAUSAL_LM, # 
                     r=lora_rank,
@@ -105,7 +99,6 @@ def load_pretrained_model(
 
                     if connector_type:
                         model.load_adapter(os.path.join(adapter_path, "connector"), adapter_name="connector")
-                        print("-> (test)Connector 장착 완료")
 
 
                 else: # train(add new adapter)
@@ -131,7 +124,7 @@ def load_pretrained_model(
                             )
 
                         model.add_adapter(peft_config=connector_config, adapter_name="connector")
-                        print("-> (train)Connector 장착 완료")
+                        print("-> Connector 장착 완료")
 
 
 
@@ -144,7 +137,8 @@ def load_pretrained_model(
                     target_modules=lora_target_modules
                 )
             model = get_peft_model(model, lora_config)
-            print("-> O N E  L O R A 장 착 완 료")
+
+        print("-> L O R A 장 착 완 료")
 
     # initialize vision modeles(or Load ViT?)
     model_args = ModelVisonArguments()

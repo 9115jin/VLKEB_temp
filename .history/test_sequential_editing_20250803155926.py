@@ -754,9 +754,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50_vis():
     trainer.test_sequencial_compositional_connector_eval_vis(log=True, test_num=10 ,gap_num=10) # 600개부터 터짐
 
 
-### LLaVA 1.5V 13B:
-
-# baselines - LoRA(r:16)
+# LLaVA 1.5V 13B:
 def test_LLaVA13B_CompositionalEdit_one_lora():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava13b_compositional_edit_r16.yaml')
     eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
@@ -766,23 +764,6 @@ def test_LLaVA13B_CompositionalEdit_one_lora():
         val_set=eval_ds
     )
     trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) #
-
-# baselines - SERAC(?)
-# baselines - FT
-
-# ours
-# train@50 - connector
-def test_LLaVA_CompositionalEdit_Connector_attention_rag_50():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_connector_attention_rag_50(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
-
-# test
 
 
 

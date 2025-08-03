@@ -63,7 +63,6 @@ def load_pretrained_model(
     #2) 기존 모델 로딩
     model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
-    print(lora_rank)
     if lora_rank == 16:
         use_two_lora = False # One lora
     else:

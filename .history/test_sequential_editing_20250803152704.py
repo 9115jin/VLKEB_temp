@@ -4,7 +4,7 @@ import types
 from statistics import mean
 
 from easyeditor import BaseEditor, MultimodalTrainer, MultimodalEditor
-from easyeditor import CaptionDataset, VQADataset, TextualDataset, CompositionalDataset, CompositionalDataset_RAG, CompositionalDataset_RAG_Simple, CompositionalDataset_RAG_70, CompositionalDataset_RAG_50
+from easyeditor import CaptionDataset, VQADataset, TextualDataset, CompositionalDataset, CompositionalDataset_RAG, CompositionalDataset_RAG_Simple, CompositionalDataset_RAG_70, CompositionalDataset_RAG_50, CompositionalDataset_RAG_25
 from easyeditor import MENDMultimodalTrainingHparams, SERACMultimodalTrainingHparams, IKEMultimodalHyperParams, MENDMultimodalHparams \
     , SERACMultimodalHparams, FTMultimodalHparams
 from easyeditor import encode_ike_facts_multimodal
@@ -752,19 +752,6 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50_vis():
         val_set=eval_ds
     )
     trainer.test_sequencial_compositional_connector_eval_vis(log=True, test_num=10 ,gap_num=10) # 600개부터 터짐
-
-
-# LLaVA 1.5V 13B:
-def test_LLaVA13B_CompositionalEdit_one_lora():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava13b_compositional_edit_r16.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) #
-
 
 
 if __name__ == "__main__":

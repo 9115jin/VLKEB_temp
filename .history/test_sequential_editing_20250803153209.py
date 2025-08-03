@@ -4,7 +4,7 @@ import types
 from statistics import mean
 
 from easyeditor import BaseEditor, MultimodalTrainer, MultimodalEditor
-from easyeditor import CaptionDataset, VQADataset, TextualDataset, CompositionalDataset, CompositionalDataset_RAG, CompositionalDataset_RAG_Simple, CompositionalDataset_RAG_70, CompositionalDataset_RAG_50
+from easyeditor import CaptionDataset, VQADataset, TextualDataset, CompositionalDataset, CompositionalDataset_RAG, CompositionalDataset_RAG_Simple, CompositionalDataset_RAG_70, CompositionalDataset_RAG_50, CompositionalDataset_RAG_25
 from easyeditor import MENDMultimodalTrainingHparams, SERACMultimodalTrainingHparams, IKEMultimodalHyperParams, MENDMultimodalHparams \
     , SERACMultimodalHparams, FTMultimodalHparams
 from easyeditor import encode_ike_facts_multimodal
@@ -763,8 +763,8 @@ def test_LLaVA13B_CompositionalEdit_one_lora():
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) #
-
+    trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
 
 
 if __name__ == "__main__":

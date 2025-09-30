@@ -5,7 +5,6 @@ import os
 import shutil
 import tempfile
 import time
-import numpy as np
 
 import torch
 from .losses import kl_loc_loss
@@ -23,66 +22,6 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 LOG = logging.getLogger(__name__)
-
-
-class MemoryMappedLogits:
-    """Memory-mapped storage for logits to reduce RAM usage"""
-    def __init__(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.file_paths = []
-        
-    def append(self, tensor):
-        """기존 .append()와 동일한 인터페이스"""
-        idx = len(self.file_paths)
-        file_path = f"{self.temp_dir}/logits_{idx}.dat"
-        
-        # numpy로 변환 후 메모리 매핑 파일 생성
-        tensor_np = tensor.cpu().numpy().astype(np.float16)
-        mmap_array = np.memmap(file_path, dtype=np.float16, mode='w+', shape=tensor_np.shape)
-        mmap_array[:] = tensor_np
-        mmap_array.flush()
-        
-        self.file_paths.append((file_path, tensor_np.shape))
-        return len(self.file_paths) - 1
-        
-    def __getitem__(self, idx):
-        """기존 list[idx]와 동일한 인터페이스"""
-        file_path, shape = self.file_paths[idx]
-        mmap_array = np.memmap(file_path, dtype=np.float16, mode='r', shape=shape)
-        # 배열을 복사하여 쓰기 가능하게 만들고, CPU에서 생성
-        array_copy = mmap_array[:].copy()
-        return torch.from_numpy(array_copy).float()
-        
-    def __len__(self):
-        return len(self.file_paths)
-        
-    def pop(self, idx=0):
-        """기존 list.pop()과 동일한 인터페이스"""
-        if idx >= len(self.file_paths):
-            raise IndexError("pop index out of range")
-        
-        # 데이터 로드
-        file_path, shape = self.file_paths[idx]
-        mmap_array = np.memmap(file_path, dtype=np.float16, mode='r', shape=shape)
-        # 배열을 복사하여 쓰기 가능하게 만들고, CPU에서 생성
-        array_copy = mmap_array[:].copy()
-        result = torch.from_numpy(array_copy).float()
-        
-        # 파일 삭제 및 리스트에서 제거
-        try:
-            os.remove(file_path)
-        except:
-            pass
-        self.file_paths.pop(idx)
-        
-        return result
-        
-    def __del__(self):
-        """임시 디렉토리 정리"""
-        try:
-            shutil.rmtree(self.temp_dir)
-        except:
-            pass
 
 
 class MultimodalTrainer(BaseTrainer):
@@ -575,10 +514,10 @@ class MultimodalTrainer(BaseTrainer):
         val_data_store = []
 
         # visul-data
-        base_logits_store_vis = MemoryMappedLogits()
-        base_image_logits_store_vis = MemoryMappedLogits()
+        base_logits_store_vis = []
+        base_image_logits_store_vis = []
         # textual-data
-        base_logits_store_tex = MemoryMappedLogits()
+        base_logits_store_tex = []
 
         pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
         
@@ -662,12 +601,7 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/average"] = elapsed / steps
 
         if 'llava' in self.config.model_name.lower():
-            if os.path.basename(self.config.name) == "llava-v1.5-13b":
-                print("-> llava 13B 저장중...")
-                result_dir = f"results/results_sequencial/llava1.5v_13b/composition/ft"
-            elif os.path.basename(self.config.name) == "llava-v1.5-7b":
-                result_dir = f"results/results_sequencial/composition/ft"
-                print("-> llava 7B 저장중...")
+            result_dir = f"results/results_sequencial/composition/ft"
         elif 'blip2' in self.config.model_name.lower() :
             result_dir = f"results/results_sequencial/blip2/composition/ft"
         elif 'minigpt4' in self.config.model_name.lower() :
@@ -766,17 +700,7 @@ class MultimodalTrainer(BaseTrainer):
         info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
         info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
         info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
-        # 디바이스 일치를 위해 base_image_logits_softmax_top_k를 post_image_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_image_logits_softmax_top_k = base_image_logits_softmax_top_k.to(post_image_base_logits_softmax_top_k.device)
         info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 
@@ -826,8 +750,6 @@ class MultimodalTrainer(BaseTrainer):
 
         info_dict['text/inner/acc'] = inner_edit_dict["acc"].item()
         info_dict['text/edit/acc'] = post_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["text/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 
@@ -1476,11 +1398,7 @@ class MultimodalTrainer(BaseTrainer):
         info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
         info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
         info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
-        # 디바이스 일치를 위해 base_image_logits_softmax_top_k를 post_image_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_image_logits_softmax_top_k = base_image_logits_softmax_top_k.to(post_image_base_logits_softmax_top_k.device)
         info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 
@@ -1530,8 +1448,6 @@ class MultimodalTrainer(BaseTrainer):
 
         info_dict['text/inner/acc'] = inner_edit_dict["acc"].item()
         info_dict['text/edit/acc'] = post_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["text/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 
@@ -6622,8 +6538,6 @@ class MultimodalTrainer(BaseTrainer):
             info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
             info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
             info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
-            # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-            base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
             info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
             info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
             ##############################################################################
@@ -6882,10 +6796,10 @@ class MultimodalTrainer(BaseTrainer):
         val_data_store = []
 
         # visul-data
-        base_logits_store_vis = MemoryMappedLogits()
-        base_image_logits_store_vis = MemoryMappedLogits()
+        base_logits_store_vis = []
+        base_image_logits_store_vis = []
         # textual-data
-        base_logits_store_tex = MemoryMappedLogits()
+        base_logits_store_tex = []
 
         pbar = tqdm(total=test_num, desc=f"Prepare", ncols=100)
         
@@ -6976,12 +6890,10 @@ class MultimodalTrainer(BaseTrainer):
         stats["eval_time/average"] = elapsed / steps
 
         if 'llava' in self.config.model_name.lower():
-            if os.path.basename(self.config.name) == "llava-v1.5-13b":
-                print("-> llava 13B 저장중...")
+            if "llava-v1.5-13b" == os.path.basename(self.config.name) :
                 result_dir = f"results/results_sequencial/llava1.5v_13b/composition/two_lora_connect_attention_rag_50"
-            elif os.path.basename(self.config.name) == "llava-v1.5-7b":
+            else:
                 result_dir = f"results/results_sequencial/composition/two_lora_connect_attention_rag_50"
-                print("-> llava 7B 저장중...")
             
         elif 'blip2' in self.config.model_name.lower() :
             result_dir = f"results/results_sequencial/blip2/composition/two_lora_connect_attention_rag_50"
@@ -7112,11 +7024,7 @@ class MultimodalTrainer(BaseTrainer):
         info_dict['vis/inner/acc'] = inner_edit_dict["acc"].item() # copy안해도 되는가? -> item은 int/float이 직접 반환됨. 따라서 ㅇㅇ
         info_dict['vis/edit/acc'] = post_edit_dict["acc"].item()
         info_dict['vis/image_rephrase/acc'] = image_rephrase_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["vis/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
-        # 디바이스 일치를 위해 base_image_logits_softmax_top_k를 post_image_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_image_logits_softmax_top_k = base_image_logits_softmax_top_k.to(post_image_base_logits_softmax_top_k.device)
         info_dict["vis/image_loc/acc"] = sum(post_image_base_logits_softmax_top_k.view(-1) == base_image_logits_softmax_top_k.view(-1))/post_image_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 
@@ -7168,8 +7076,6 @@ class MultimodalTrainer(BaseTrainer):
 
         info_dict['text/inner/acc'] = inner_edit_dict["acc"].item()
         info_dict['text/edit/acc'] = post_edit_dict["acc"].item()
-        # 디바이스 일치를 위해 base_logits_softmax_top_k를 post_base_logits_softmax_top_k와 같은 디바이스로 이동
-        base_logits_softmax_top_k = base_logits_softmax_top_k.to(post_base_logits_softmax_top_k.device)
         info_dict["text/loc/acc"] = sum(post_base_logits_softmax_top_k.view(-1) == base_logits_softmax_top_k.view(-1))/post_base_logits_softmax_top_k.view(-1).shape[0]
         ##############################################################################
 

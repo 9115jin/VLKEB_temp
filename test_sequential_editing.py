@@ -305,9 +305,8 @@ def test_LLaVA_FT_VIS_Composition():
     trainer.test_sequencial_compositional_ft_vis(log=True, test_num=5 , gap_num=gap_num)
     
 
-######################################
-
-
+#region: Unused Code(VLKEB)
+####################### VLKEB #######################
 def test_LLaVA_MEND():
     hparams = MENDMultimodalTrainingHparams.from_hparams('hparams/MEND/llava.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
@@ -348,16 +347,19 @@ def test_LLaVA_VisEdit():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-def test_LLaVA_TextualEdit():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_textual_edit.yaml')
-    eval_ds = TextualDataset('datasets/train_textual_edit.json', config=hparams, hop=hop, no_image=True)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_textual(log=True, gap_num=gap_num)
+# def test_LLaVA_TextualEdit():
+#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_textual_edit.yaml')
+#     eval_ds = TextualDataset('datasets/train_textual_edit.json', config=hparams, hop=hop, no_image=True)
+#     trainer = MultimodalTrainer(
+#         config=hparams,
+#         train_set=eval_ds,
+#         val_set=eval_ds
+#     )
+#     trainer.test_sequencial_textual(log=True, gap_num=gap_num)
+#endregion
 
+####################### CCKE Setting #######################
+# Fine-Tuning
 def test_LLaVA_CompositionalEdit():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit.yaml')
     eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
@@ -767,20 +769,43 @@ def test_LLaVA13B_CompositionalEdit_one_lora():
     )
     trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) #
 
-# baselines - SERAC(?)
 # baselines - FT
+def test_LLaVA13B_FT_Composition():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava13b.yaml')
+    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+
+def test_LLaVA13B_FT_Composition_device6():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava13b_6.yaml')
+    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    
+    trainer.test_sequencial_compositional_ft(log=True, test_num=200 , gap_num=gap_num)
+
+
 
 # ours
 # train@50 - connector
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50.yaml')
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava13b_compositional_edit_connector_lora_attention_rag_50.yaml')
     eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional_connector_attention_rag_50(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional_connector_attention_rag_50(log=True, test_num= 500, gap_num=0) # 600개부터 터짐
+    exit()
 
 # test
 

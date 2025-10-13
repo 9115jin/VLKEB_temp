@@ -31,20 +31,6 @@ LOG = logging.getLogger(__name__)
 class BaseTrainer:
     def __init__(self, config, train_set: Dataset, val_set: Dataset):
         LOG.info(f'Config: {config}')
-        
-        # Set random seed if provided in config
-        if hasattr(config, 'seed'):
-            import random
-            import numpy as np
-            
-            random.seed(config.seed)
-            np.random.seed(config.seed)
-            torch.manual_seed(config.seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(config.seed)
-                torch.cuda.manual_seed_all(config.seed)
-            LOG.info(f"Set random seed to {config.seed}")
-        
         model_ = get_model(config)
         self.alg_module = ALG_TRAIN_DICT[config.alg.upper()]      
         LOG.info(f"Loading class {config.alg.upper()} from module {self.alg_module}")

@@ -1398,7 +1398,10 @@ class MultimodalTrainer(BaseTrainer):
             LOG.info(results_path)
 
         return stats
+    
 
+        ## TEST - compositonal
+    
         ## TEST - compositonal step(실제 inference, acc 측정)
     def test_sequencial_compositional_step(self, batch, edited_model, base_logits_vis, base_image_logits_vis, base_logits_tex):
         info_dict = {}

@@ -15,7 +15,7 @@ from datetime import datetime
 
 
 ####################### MiniGPT4 ##########################
-##### VLKEB  Setting ######
+
 def test_MiniGPT4_FT():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
@@ -56,10 +56,7 @@ def test_MiniGPT4_SERAC():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-##### Compositoin: CCKE Setting ######
-## Baselines
-
-# FT
+## Ours ##
 def test_MiniGPT4_FT_composition():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
     eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
@@ -75,53 +72,6 @@ def test_MiniGPT4_FT_composition():
 
     trainer.test_sequencial_compositional_ft(log=True, test_num=200 , gap_num=gap_num)
 
-def test_MiniGPT4_FT_composition_0():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_0.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
-
-def test_MiniGPT4_FT_composition_1():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_1.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
-
-def test_MiniGPT4_FT_composition_2():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_2.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
-
-def test_MiniGPT4_FT_composition_3():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_3.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
-
-
-
-# LoRA(rank 16)
 def test_MiniGPT4_CompositionalEdit_one_lora():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16.yaml')
     eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
@@ -132,48 +82,8 @@ def test_MiniGPT4_CompositionalEdit_one_lora():
     )
     trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
 
-def test_MiniGPT4_CompositionalEdit_one_lora_4():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_4.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
-
-def test_MiniGPT4_CompositionalEdit_one_lora_5():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_5.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
-
-def test_MiniGPT4_CompositionalEdit_one_lora_6():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_6.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
-
-def test_MiniGPT4_CompositionalEdit_one_lora_7():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_7.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
 
 
-# OURS
 def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_connector_lora_attention_rag_50.yaml')
     eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) 
@@ -193,6 +103,7 @@ def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_70():
         val_set=eval_ds
     )
     trainer.test_sequencial_compositional_connector_attention_rag_70(log=True, test_num=500 ,gap_num=gap_num) 
+
 
 def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_50_eval.yaml')

@@ -39,7 +39,6 @@ class MiniGPT4(Blip2Base):
         connector_type: Optional[str] = None, 
         for_eval: Optional[bool] = None,
         adapter_path: Optional[str] = None,
-        dropout: float = 0.0,
         # --- Baseline
         vit_model="eva_clip_g",
         qformer_checkpoint="hugging_cache/blip2_pretrained_flant5xxl.pth",
@@ -65,7 +64,6 @@ class MiniGPT4(Blip2Base):
         self.config = None
         self.tokenizer = self.init_tokenizer(qformer_name_or_path)
         self.low_resource = low_resource
-        self.dropout_layer = nn.Dropout(dropout) if dropout and dropout > 0 else nn.Identity()
 
         print('Loading VIT')
         self.visual_encoder, self.ln_vision = self.init_minigpt4_vision_encoder(
@@ -256,7 +254,6 @@ class MiniGPT4(Blip2Base):
             )
 
             inputs_llama = self.llama_proj(query_output.last_hidden_state)
-            inputs_llama = self.dropout_layer(inputs_llama)
             atts_llama = torch.ones(inputs_llama.size()[:-1], dtype=torch.long).to(image.device)
         return inputs_llama, atts_llama
 
@@ -355,8 +352,6 @@ class MiniGPT4(Blip2Base):
             inputs_embeds = self.llama_model.get_input_embeddings()(to_regress_tokens.input_ids)  ## - with lora
             attention_mask = to_regress_tokens.attention_mask
 
-        inputs_embeds = self.dropout_layer(inputs_embeds)
-
         with self.maybe_autocast():
             outputs = self.llama_model(
                 inputs_embeds=inputs_embeds,
@@ -434,7 +429,6 @@ class MiniGPT4(Blip2Base):
         
         to_regress_embeds = self.llama_model.get_input_embeddings()(to_regress_tokens.input_ids)
         inputs_embeds = torch.cat([bos_embeds, img_embeds, to_regress_embeds], dim=1)
-        inputs_embeds = self.dropout_layer(inputs_embeds)
         attention_mask = torch.cat([atts_bos, atts_img, to_regress_tokens.attention_mask], dim=1)
 
         with self.maybe_autocast():

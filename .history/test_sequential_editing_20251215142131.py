@@ -15,7 +15,7 @@ from datetime import datetime
 
 
 ####################### MiniGPT4 ##########################
-
+##### VLKEB  Setting ######
 def test_MiniGPT4_FT():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
@@ -56,10 +56,13 @@ def test_MiniGPT4_SERAC():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-## Ours ##
+##### Compositoin: CCKE Setting ######
+## Baselines
+
+# FT
 def test_MiniGPT4_FT_composition():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -68,9 +71,113 @@ def test_MiniGPT4_FT_composition():
 
     trainer.test_sequencial_compositional_ft(log=True, test_num=200 , gap_num=gap_num)
 
+
+
+    trainer.test_sequencial_compositional_ft(log=True, test_num=200 , gap_num=gap_num)
+
+def test_MiniGPT4_FT_composition_0():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_0.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+
+def test_MiniGPT4_FT_composition_1():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_1.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+
+def test_MiniGPT4_FT_composition_2():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_2.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+
+def test_MiniGPT4_FT_composition_3():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_3.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+
+
+
+# LoRA(rank 16)
+def test_MiniGPT4_CompositionalEdit_one_lora():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
+
+def test_MiniGPT4_CompositionalEdit_one_lora_4():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_4.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
+
+def test_MiniGPT4_CompositionalEdit_one_lora_5():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_5.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
+
+def test_MiniGPT4_CompositionalEdit_one_lora_6():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_6.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
+
+def test_MiniGPT4_CompositionalEdit_one_lora_7():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_r16_7.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num)
+
+
+# OURS
+# train connector train@50
 def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_connector_lora_attention_rag_50.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) 
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_train.json', config=hparams, hop=hop) 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -80,7 +187,7 @@ def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50():
 
 def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_70():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4_compositional_edit_connector_lora_attention_rag_70.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) 
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_train.json', config=hparams, hop=hop) 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -88,10 +195,9 @@ def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_70():
     )
     trainer.test_sequencial_compositional_connector_attention_rag_70(log=True, test_num=500 ,gap_num=gap_num) 
 
-
 def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_50_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -99,8 +205,8 @@ def test_MiniGPT4_CompositionalEdit_Connector_attention_rag_50_eval():
     )
     trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
  
-
 ####################### BLIP2 ##########################
+#region: BLIP2
 def test_Blip2OPT_FT():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
@@ -144,7 +250,7 @@ def test_Blip2OPT_SERAC():
 # Two LorA + Connector(Self-Attention) + RAG(비율 조정: 50~70% 정확도)
 # def test_LLaVA_CompositionalEdit_Connector_attention_rag_70():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70.yaml')
-    eval_ds = CompositionalDataset_RAG_70('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
+    eval_ds = CompositionalDataset_RAG_70('datasets/CCKEB_train.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -152,108 +258,10 @@ def test_Blip2OPT_SERAC():
     )
     trainer.test_sequencial_compositional_connector_attention_rag_70(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
 
-## Ours
-def test_Blip2OPT_CompositionalEdit_Connector_attention_rag_50():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_50.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_connector_attention_rag_50(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
-def test_Blip2OPT_CompositionalEdit_Connector_attention_rag_50_eval():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_50_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
- 
-def test_Blip2OPT_CompositionalEdit_Connector_attention_rag_70():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_70.yaml')
-    eval_ds = CompositionalDataset_RAG_70('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_connector_attention_rag_70(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
-def test_Blip2OPT_CompositionalEdit_Connector_attention_rag_70_eval():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_connector_lora_attention_rag_70_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
-
-## baseline 비교용(knowledge connector)
-# Single LoRA
-def test_Blip2OPT_CompositionalEdit_one_lora():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_r16.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
-
-
-# LLAVA(BASE) + RAG(retrieval 성능 분석용)
-def test_Blip2OPT_RAG():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_rag.yaml')
-
-    eval_ds = CompositionalDataset_RAG_Simple('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    
-    trainer.test_sequencial_base_with_rag(log=True, gap_num=0, test_num=500) # 500
-
-# RAG + Two LoRA
-def test_Blip2OPT_RAG_With_Two_Lora():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_rag_with_twolora.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_rag_with_two_lora_parallel(log=True, gap_num=gap_num, test_num=200)
-def test_Blip2OPT_RAG_With_Two_Lora_simple():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit_rag_with_twolora.yaml')
-    eval_ds = CompositionalDataset_RAG_Simple('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_rag_with_two_lora_parallel_simple(log=True, gap_num=gap_num, test_num=200)
-
-
-def test_Blip2OPT_CompositionalEdit_two_lora():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_compositional_edit.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    trainer.test_sequencial_compositional_two_parallel(log=True, test_num=200 ,gap_num=gap_num) 
-
+#endregion
 
 ####################### LLAVA ##########################
-
-################ FT ################
+#### FT ####
 def test_LLaVA_FT():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava.yaml')
     eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
@@ -274,10 +282,10 @@ def test_LLaVA_FT_VIS():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-################ FT Composition ################
+#### FT Composition #######
 def test_LLaVA_FT_Composition():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -350,12 +358,12 @@ def test_LLaVA_VisEdit():
 #     trainer.test_sequencial_textual(log=True, gap_num=gap_num)
 #endregion
 
-####################### Compositoin: CCKE Setting #######################
+##### Compositoin: CCKE Setting ######
 ### --- Baselines --- ### 
 # FT 
-def test_LLaVA_FT_Composition():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+def test_LLaVA_FT_Composition_0():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_0.yaml')
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -364,33 +372,20 @@ def test_LLaVA_FT_Composition():
     
     trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
 
-def test_LLaVA_FT_Composition_0():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_0.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-    
-    trainer.test_sequencial_compositional_ft(log=True, test_num=20 , gap_num=gap_num)
-
 def test_LLaVA_FT_Composition_1():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_1.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
     
-    trainer.test_sequencial_compositional_ft(log=True, test_num=20 , gap_num=gap_num)
+    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
 
 def test_LLaVA_FT_Composition_2():
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_2.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -400,10 +395,8 @@ def test_LLaVA_FT_Composition_2():
     trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
 
 def test_LLaVA_FT_Composition_3():
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_3.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -416,18 +409,17 @@ def test_LLaVA_FT_Composition_3():
 # LoRA(rank:16)
 def test_LLaVA_CompositionalEdit_one_lora():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop) # updated.json -> new.json
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
-    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
+    trainer.test_sequencial_compositional(log=True, test_num=10 ,gap_num=gap_num) # 600개부터 터짐
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu4():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu4.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop) # updated.json -> new.json
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -438,7 +430,7 @@ def test_LLaVA_CompositionalEdit_one_lora_gpu4():
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu5():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu5.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop) # updated.json -> new.json
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -449,7 +441,7 @@ def test_LLaVA_CompositionalEdit_one_lora_gpu5():
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu6():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu6.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop) # updated.json -> new.json
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -460,7 +452,7 @@ def test_LLaVA_CompositionalEdit_one_lora_gpu6():
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu7():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu7.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop) # updated.json -> new.json
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop) # updated.json -> new.json
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -474,8 +466,8 @@ def test_LLaVA_CompositionalEdit_one_lora_gpu7():
 # ohers: LoRA(dual lora)
 def test_LLaVA_CompositionalEdit_two_lora():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit.yaml')
-    #eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    #eval_ds = CompositionalDataset('datasets/CCKEB_train.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -488,7 +480,7 @@ def test_LLaVA_CompositionalEdit_two_lora():
 ## Train Connectors
 # def test_LLaVA_CompositionalEdit_Connector():
 #     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector.yaml')
-#     eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+#     eval_ds = CompositionalDataset('datasets/CCKEB_train.json', config=hparams, hop=hop)
 #     trainer = MultimodalTrainer(
 #         config=hparams,
 #         train_set=eval_ds,
@@ -499,7 +491,7 @@ def test_LLaVA_CompositionalEdit_two_lora():
 
 # def test_LLaVA_CompositionalEdit_Connector_Two():
 #     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_two.yaml')
-#     eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+#     eval_ds = CompositionalDataset('datasets/CCKEB_train.json', config=hparams, hop=hop)
 #     trainer = MultimodalTrainer(
 #         config=hparams,
 #         train_set=eval_ds,
@@ -508,11 +500,12 @@ def test_LLaVA_CompositionalEdit_two_lora():
 #     trainer.test_sequencial_compositional_connector_two(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 #     ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
 
+## LLaVA 1.5V 7B
 #region: LLaVA 1.5V 7B - Connector(Attention) 
 # Two LorA + Connector(Self-Attention)
 def test_LLaVA_CompositionalEdit_Connector_attention():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention.yaml')
-    eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/CCKEB_train.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -533,7 +526,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_eval():
 # Two LorA + Connector(Self-Attention) + RAG
 def test_LLaVA_CompositionalEdit_Connector_attention_rag():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/CCKEB_train.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -554,7 +547,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_eval():
 # -- train@70%, 50%
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_70():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70.yaml')
-    eval_ds = CompositionalDataset_RAG_70('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
+    eval_ds = CompositionalDataset_RAG_70('datasets/CCKEB_train.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -563,7 +556,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_70():
     trainer.test_sequencial_compositional_connector_attention_rag_70(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/train_compositional_edit.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_train.json', config=hparams, hop=hop) # prompt feeding 변경 필요 
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -574,7 +567,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50():
 # -- test@100 --
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_100_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -583,7 +576,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval():
     trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -592,7 +585,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval():
     trainer.test_sequencial_compositional_connector_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval.yaml')
-    eval_ds = CompositionalDataset_RAG('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -603,7 +596,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval():
 # -- test@50% --
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_eval.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -612,7 +605,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval_50():
     trainer.test_sequencial_compositional_connector_eval_50(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70_eval_70.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -621,7 +614,7 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval_50():
     trainer.test_sequencial_compositional_connector_eval_50(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval_50.yaml')
-    eval_ds = CompositionalDataset_RAG_50('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset_RAG_50('datasets/CCKEB_eval.json', config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
@@ -629,37 +622,6 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50():
     )
     trainer.test_sequencial_compositional_connector_eval_50(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
  
-
-# -- test@25% --
-# def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval_25():
-#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_eval.yaml')
-#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-#     trainer = MultimodalTrainer(
-#         config=hparams,
-#         train_set=eval_ds,
-#         val_set=eval_ds
-#     )
-#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
-# def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval_25():
-#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70_eval_70.yaml')
-#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-#     trainer = MultimodalTrainer(
-#         config=hparams,
-#         train_set=eval_ds,
-#         val_set=eval_ds
-#     )
-#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
-# def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_25():
-#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval_50.yaml')
-#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-#     trainer = MultimodalTrainer(
-#         config=hparams,
-#         train_set=eval_ds,
-#         val_set=eval_ds
-#     )
-#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
- 
-
 # Visualization(activation)
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50_vis():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval_50_vis.yaml')

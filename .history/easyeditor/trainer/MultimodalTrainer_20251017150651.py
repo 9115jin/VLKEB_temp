@@ -716,6 +716,7 @@ class MultimodalTrainer(BaseTrainer):
             if val_step < test_num:
                 # 1.1) visual edit part
                 val_data_store.append(batch) # batch 데이터 저장
+                self.model.eval() ## <- test위해 dropout 끄기
                 with torch.no_grad():
                     base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장
                     if not isinstance(base_outputs, torch.Tensor):
@@ -747,6 +748,7 @@ class MultimodalTrainer(BaseTrainer):
         pbar.close()
 
         ## 2. Model edit & Test ##
+        self.model.train(True) # <- edit 위해 train mode
         edited_model = self.model
         pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
         for val_step, batch in enumerate(self.val_loader):
@@ -767,6 +769,16 @@ class MultimodalTrainer(BaseTrainer):
                 stored_base_logits_tex = base_logits_store_tex.pop(0)
 
                 # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
+                self.model.eval() ## <- test위해 dropout 끄기
+                ### DEBUGGING ###
+                print("--- LoRA Dropout 레이어 상태 점검 ---")
+                for name, module in self.model.named_modules():
+                    # 이름에 'lora'와 'dropout'이 포함된 모듈을 찾습니다.
+                    if 'lora' in name.lower() and isinstance(module, torch.nn.Dropout):
+                        print(f"레이어 이름: {name}")
+                        print(f"  - 드롭아웃 확률 (p): {module.p}")
+                        print(f"  - 현재 훈련 모드인가? {module.training}") # 이 값이 반드시 True여야 합니다!
+                #################
                 info_dict = self.test_sequencial_compositional_step(
                     stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
                     )
@@ -801,16 +813,13 @@ class MultimodalTrainer(BaseTrainer):
 
         results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
 
-        if test_num < 200: 
-            print("## 결과 저장 x -> testnum < 200")
-        else: 
-            os.makedirs(os.path.dirname(results_path), exist_ok=True)
-            with open(results_path, "w") as f:
-                json.dump(
-                    {"results": stats}, f
-                )
-                LOG.info("Wrote results to:")
-                LOG.info(results_path)
+        os.makedirs(os.path.dirname(results_path), exist_ok=True)
+        with open(results_path, "w") as f:
+            json.dump(
+                {"results": stats}, f
+            )
+            LOG.info("Wrote results to:")
+            LOG.info(results_path)
 
         return stats
 

@@ -716,6 +716,35 @@ class MultimodalTrainer(BaseTrainer):
             if val_step < test_num:
                 # 1.1) visual edit part
                 val_data_store.append(batch) # batch 데이터 저장
+                self.model.eval() ## <- test위해 dropout 끄기
+                ### DEBUGGING ###
+                print("--- 모든 Dropout 레이어 상태 점검 ---")
+                dropout_found = False
+                for name, module in self.model.named_modules():
+                    # 모든 Dropout 타입 체크
+                    if isinstance(module, (torch.nn.Dropout, torch.nn.Dropout2d, torch.nn.Dropout3d)):
+                        dropout_found = True
+                        print(f"레이어: {name}")
+                        print(f"  - 타입: {type(module).__name__}")
+                        print(f"  - Dropout p: {module.p}")
+                        print(f"  - Training mode: {module.training}")  # False여야 함!
+                        if module.training:
+                            print(f"  ⚠️ 경고: eval() 모드인데 dropout이 켜져있음!")
+                        
+                        # LoRA 관련인지 확인
+                        if 'lora' in name.lower():
+                            print(f"  - LoRA 관련 dropout입니다")
+
+                if not dropout_found:
+                    print("Dropout 레이어를 찾을 수 없습니다")
+                # PEFT 모델인 경우 추가 확인
+                if hasattr(self.model, 'peft_config'):
+                    print(f"\nPEFT Config:")
+                    for adapter_name, config in self.model.peft_config.items():
+                        if hasattr(config, 'lora_dropout'):
+                            print(f"  - {adapter_name}: lora_dropout = {config.lora_dropout}")
+                ########
+
                 with torch.no_grad():
                     base_outputs = self.model(batch["visual_edit"]["loc"]) # T-Loc inference 저장
                     if not isinstance(base_outputs, torch.Tensor):
@@ -747,6 +776,36 @@ class MultimodalTrainer(BaseTrainer):
         pbar.close()
 
         ## 2. Model edit & Test ##
+        self.model.train(True) # <- edit 위해 train mode
+
+        ### DEBUGGING ###
+        print("--- 모든 Dropout 레이어 상태 점검 ---")
+        dropout_found = False
+        for name, module in self.model.named_modules():
+            # 모든 Dropout 타입 체크
+            if isinstance(module, (torch.nn.Dropout, torch.nn.Dropout2d, torch.nn.Dropout3d)):
+                dropout_found = True
+                print(f"레이어: {name}")
+                print(f"  - 타입: {type(module).__name__}")
+                print(f"  - Dropout p: {module.p}")
+                print(f"  - Training mode: {module.training}")  # False여야 함!
+                if module.training:
+                    print(f"  ⚠️ 경고: eval() 모드인데 dropout이 켜져있음!")
+                
+                # LoRA 관련인지 확인
+                if 'lora' in name.lower():
+                    print(f"  - LoRA 관련 dropout입니다")
+
+        if not dropout_found:
+            print("Dropout 레이어를 찾을 수 없습니다")
+        # PEFT 모델인 경우 추가 확인
+        if hasattr(self.model, 'peft_config'):
+            print(f"\nPEFT Config:")
+            for adapter_name, config in self.model.peft_config.items():
+                if hasattr(config, 'lora_dropout'):
+                    print(f"  - {adapter_name}: lora_dropout = {config.lora_dropout}")
+        ########
+
         edited_model = self.model
         pbar = tqdm(total=gap_num+test_num, desc=f"Test Gap {gap_num}", ncols=100)
         for val_step, batch in enumerate(self.val_loader):
@@ -767,6 +826,34 @@ class MultimodalTrainer(BaseTrainer):
                 stored_base_logits_tex = base_logits_store_tex.pop(0)
 
                 # Test Sequential Edit(only inference & test) - vis / text 모두 다 평가해야 함.
+                self.model.eval() ## <- test위해 dropout 끄기
+                ### DEBUGGING ###
+                print("--- 모든 Dropout 레이어 상태 점검 ---")
+                dropout_found = False
+                for name, module in self.model.named_modules():
+                    # 모든 Dropout 타입 체크
+                    if isinstance(module, (torch.nn.Dropout, torch.nn.Dropout2d, torch.nn.Dropout3d)):
+                        dropout_found = True
+                        print(f"레이어: {name}")
+                        print(f"  - 타입: {type(module).__name__}")
+                        print(f"  - Dropout p: {module.p}")
+                        print(f"  - Training mode: {module.training}")  # False여야 함!
+                        if module.training:
+                            print(f"  ⚠️ 경고: eval() 모드인데 dropout이 켜져있음!")
+                        
+                        # LoRA 관련인지 확인
+                        if 'lora' in name.lower():
+                            print(f"  - LoRA 관련 dropout입니다")
+
+                if not dropout_found:
+                    print("Dropout 레이어를 찾을 수 없습니다")
+                # PEFT 모델인 경우 추가 확인
+                if hasattr(self.model, 'peft_config'):
+                    print(f"\nPEFT Config:")
+                    for adapter_name, config in self.model.peft_config.items():
+                        if hasattr(config, 'lora_dropout'):
+                            print(f"  - {adapter_name}: lora_dropout = {config.lora_dropout}")
+                ########
                 info_dict = self.test_sequencial_compositional_step(
                     stored_batch, edited_model, stored_base_logits_vis, stored_base_image_logits_vis, stored_base_logits_tex
                     )
@@ -801,16 +888,13 @@ class MultimodalTrainer(BaseTrainer):
 
         results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
 
-        if test_num < 200: 
-            print("## 결과 저장 x -> testnum < 200")
-        else: 
-            os.makedirs(os.path.dirname(results_path), exist_ok=True)
-            with open(results_path, "w") as f:
-                json.dump(
-                    {"results": stats}, f
-                )
-                LOG.info("Wrote results to:")
-                LOG.info(results_path)
+        os.makedirs(os.path.dirname(results_path), exist_ok=True)
+        with open(results_path, "w") as f:
+            json.dump(
+                {"results": stats}, f
+            )
+            LOG.info("Wrote results to:")
+            LOG.info(results_path)
 
         return stats
 

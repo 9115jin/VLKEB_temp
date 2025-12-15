@@ -415,7 +415,8 @@ def test_LLaVA_CompositionalEdit_one_lora():
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional(log=True, test_num=10 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu4():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu4.yaml')
@@ -500,7 +501,6 @@ def test_LLaVA_CompositionalEdit_two_lora():
 #     trainer.test_sequencial_compositional_connector_two(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
 #     ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
 
-## LLaVA 1.5V 7B
 #region: LLaVA 1.5V 7B - Connector(Attention) 
 # Two LorA + Connector(Self-Attention)
 def test_LLaVA_CompositionalEdit_Connector_attention():
@@ -622,6 +622,37 @@ def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50():
     )
     trainer.test_sequencial_compositional_connector_eval_50(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
  
+
+# -- test@25% --
+# def test_LLaVA_CompositionalEdit_Connector_attention_rag_100_eval_25():
+#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_eval.yaml')
+#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+#     trainer = MultimodalTrainer(
+#         config=hparams,
+#         train_set=eval_ds,
+#         val_set=eval_ds
+#     )
+#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+# def test_LLaVA_CompositionalEdit_Connector_attention_rag_70_eval_25():
+#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_70_eval_70.yaml')
+#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+#     trainer = MultimodalTrainer(
+#         config=hparams,
+#         train_set=eval_ds,
+#         val_set=eval_ds
+#     )
+#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+# def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_25():
+#     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval_50.yaml')
+#     eval_ds = CompositionalDataset_RAG_25('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+#     trainer = MultimodalTrainer(
+#         config=hparams,
+#         train_set=eval_ds,
+#         val_set=eval_ds
+#     )
+#     trainer.test_sequencial_compositional_connector_eval_25(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+ 
+
 # Visualization(activation)
 def test_LLaVA_CompositionalEdit_Connector_attention_rag_50_eval_50_vis():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention_rag_50_eval_50_vis.yaml')

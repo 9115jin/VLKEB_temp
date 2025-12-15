@@ -732,7 +732,6 @@ class MultimodalTrainer(BaseTrainer):
                     base_image_logits_store_vis.append(base_image_logits.clone().detach())
 
                 # 1.2) textual edit part
-                self.model.eval() ##  <- test위해 dropout 끄기
                 with torch.no_grad():
                     base_outputs = self.model(batch["textual_edit"]["loc"]) # T-Loc inference 저장
                     if not isinstance(base_outputs, torch.Tensor):
@@ -801,16 +800,13 @@ class MultimodalTrainer(BaseTrainer):
 
         results_path = os.path.join(result_dir, f"{cur_time}_{self.config.alg}_{self.config.model_name}_port{self.val_set.hop}_seqgap{gap_num}_testnum{test_num}.json")
 
-        if test_num < 200: 
-            print("## 결과 저장 x -> testnum < 200")
-        else: 
-            os.makedirs(os.path.dirname(results_path), exist_ok=True)
-            with open(results_path, "w") as f:
-                json.dump(
-                    {"results": stats}, f
-                )
-                LOG.info("Wrote results to:")
-                LOG.info(results_path)
+        os.makedirs(os.path.dirname(results_path), exist_ok=True)
+        with open(results_path, "w") as f:
+            json.dump(
+                {"results": stats}, f
+            )
+            LOG.info("Wrote results to:")
+            LOG.info(results_path)
 
         return stats
 

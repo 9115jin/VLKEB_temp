@@ -304,7 +304,7 @@ class CompositionalDataset(BaseDataset):
                 for ports in record['port_new']:
                     if ports['port_type'] == port_type:
                         find_hop = True
-                        port_q = """ ports['Q&A']['Question'] """ #  "What country is the city in the image part of?"
+                        port_q = ports['Q&A']['Question'] #  "What country is the city in the image part of?"
                         port_a = textual_alt              #  e: "Billings,_Montana"(before textual edit) -> e`: "United States"(after tex edit)
                         item['portability_prompt'].append(port_q)
                         item['portability_ground_truth'].append(port_a)

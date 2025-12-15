@@ -56,18 +56,6 @@ def test_MiniGPT4_SERAC():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-# CCKEB Setting
-def test_MiniGPT4_FT_composition():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
-    trainer = MultimodalTrainer(
-        config=hparams,
-        train_set=eval_ds,
-        val_set=eval_ds
-    )
-
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
-
 ####################### LLAVA ##########################
 
 def test_LLaVA_FT():
@@ -164,6 +152,7 @@ def test_LLaVA_CompositionalEdit_two_lora():
     )
     trainer.test_sequencial_compositional_two(log=True, test_num=500 ,gap_num=gap_num) 
 
+
 # LLAVA(BASE) + RAG(retrieval 성능 분석용)
 def test_LLaVA_RAG():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_rag.yaml')
@@ -186,6 +175,7 @@ def test_LLaVA_RAG_With_Two_Lora():
     )
 
     trainer.test_sequencial_rag_with_two_lora(log=True, gap_num=gap_num, test_num=500)
+
 
 ## Connector(Attention) 
 # Two LorA + Connector(Self-Attention)

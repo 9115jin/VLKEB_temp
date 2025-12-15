@@ -415,7 +415,7 @@ def test_LLaVA_CompositionalEdit_one_lora():
         train_set=eval_ds,
         val_set=eval_ds
     )
-    trainer.test_sequencial_compositional(log=True, test_num=10 ,gap_num=gap_num) # 600개부터 터짐
+    trainer.test_sequencial_compositional(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
 
 def test_LLaVA_CompositionalEdit_one_lora_gpu4():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_r16_gpu4.yaml')

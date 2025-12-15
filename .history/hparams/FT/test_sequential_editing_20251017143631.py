@@ -56,17 +56,47 @@ def test_MiniGPT4_SERAC():
     )
     trainer.test_sequencial(log=True, gap_num=gap_num)
 
-# CCKEB Setting
-def test_MiniGPT4_FT_composition():
-    hparams = FTMultimodalHparams.from_hparams('hparams/FT/minigpt4.yaml')
-    eval_ds = CompositionalDataset('datasets/eval_compositional_edit_new.json', config=hparams, hop=hop)
+
+####################### BLIP2 ##########################
+def test_Blip2OPT_FT():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
     trainer = MultimodalTrainer(
         config=hparams,
         train_set=eval_ds,
         val_set=eval_ds
     )
+    trainer.test_sequencial(log=True, gap_num=gap_num)
 
-    trainer.test_sequencial_compositional_ft(log=True, test_num=500 , gap_num=gap_num)
+def test_Blip2OPT_FT_VIS():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/blip2_qformer.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial(log=True, gap_num=gap_num)
+
+def test_Blip2OPT_MEND():
+    hparams = MENDMultimodalHparams.from_hparams('hparams/MEND/blip2.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial(log=True, gap_num=gap_num)
+
+def test_Blip2OPT_SERAC():
+    hparams = SERACMultimodalHparams.from_hparams('hparams/SERAC/blip2.yaml')
+    eval_ds = CaptionDataset(eval_json_path, config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial(log=True, gap_num=gap_num)
 
 ####################### LLAVA ##########################
 
@@ -164,6 +194,7 @@ def test_LLaVA_CompositionalEdit_two_lora():
     )
     trainer.test_sequencial_compositional_two(log=True, test_num=500 ,gap_num=gap_num) 
 
+
 # LLAVA(BASE) + RAG(retrieval 성능 분석용)
 def test_LLaVA_RAG():
     hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_rag.yaml')
@@ -186,6 +217,46 @@ def test_LLaVA_RAG_With_Two_Lora():
     )
 
     trainer.test_sequencial_rag_with_two_lora(log=True, gap_num=gap_num, test_num=500)
+
+
+## Connector(FFN)
+# Two LorA + Connector(FFN)
+def test_LLaVA_CompositionalEdit_Connector_ffn():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_ffn.yaml')
+    eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional_connector_ffn(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
+
+# Two LorA + Connector(Self-Attention) - eval
+def test_LLaVA_CompositionalEdit_Connector_ffn_eval():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_attention.yaml')
+    #eval_ds = CompositionalDataset('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    eval_ds = CompositionalDataset('datasets/eval_compositional_edit.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional_connector_ffn_eval(log=True, test_num=200 ,gap_num=gap_num) # 600개부터 터짐
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
+
+# Two LorA + Connector(FFN)
+def test_LLaVA_CompositionalEdit_Connector_ffn_rag():
+    hparams = FTMultimodalHparams.from_hparams('hparams/FT/llava_compositional_edit_connector_lora_ffn_rag.yaml')
+    eval_ds = CompositionalDataset_RAG('datasets/train_compositional_edit.json', config=hparams, hop=hop)
+    trainer = MultimodalTrainer(
+        config=hparams,
+        train_set=eval_ds,
+        val_set=eval_ds
+    )
+    trainer.test_sequencial_compositional_connector_ffn_rag(log=True, test_num=500 ,gap_num=gap_num) # 600개부터 터짐
+    ## Visual Edit + Textual Edit --> 각 sample을 pair로 묶어서 데이터 구성시키면 될듯. 
+
 
 ## Connector(Attention) 
 # Two LorA + Connector(Self-Attention)
